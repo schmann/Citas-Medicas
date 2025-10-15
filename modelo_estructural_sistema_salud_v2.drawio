@@ -1,0 +1,215 @@
+<?xml version="1.0" ?>
+<mxfile host="app.diagrams.net">
+  <diagram name="Modelo Estructural - Separado">
+    <mxGraphModel>
+      <root>
+        <mxCell id="0"/>
+        <mxCell id="1" parent="0"/>
+        <mxCell id="2" value="&lt;b&gt;agendas&lt;/b&gt;&lt;br&gt;id_Agenda : int(11)&lt;br&gt;Medico_id : int(11)&lt;br&gt;Consultorio_id : int(11)&lt;br&gt;Especialidad_Medica : int(11)&lt;br&gt;Horario_Cita_id : int(11)&lt;br&gt;Domicilio_id : int(11)&lt;br&gt;Max_pacientes : int(11)&lt;br&gt;Status_id : int(11)&lt;br&gt;Status_Medico_id : int(11)&lt;br&gt;Nota : varchar(200)" style="shape=rectangle;rounded=0;whiteSpace=wrap;html=1;fillColor=#ffffff;strokeColor=#6c8ebf;fontSize=11;align=left;spacingLeft=10;" vertex="1" parent="1">
+          <mxGeometry x="40" y="40" width="320" height="190" as="geometry"/>
+        </mxCell>
+        <mxCell id="3" value="&lt;b&gt;anamnesis&lt;/b&gt;&lt;br&gt;id_anamnesis : int(11)&lt;br&gt;Paciente_Id : int(11)&lt;br&gt;Paciente_Especial_id : int(11)&lt;br&gt;Medico_id : int(11)&lt;br&gt;Fecha : datetime&lt;br&gt;Control_Historia_Medico_id : int(11)&lt;br&gt;Enfermedad_Actual : text&lt;br&gt;Origen : text&lt;br&gt;Hallazgo : text&lt;br&gt;Plan_Tratamiento : text&lt;br&gt;Diagnostico_Definitivo : text&lt;br&gt;Pronostico : text&lt;br&gt;id_Status : int(11)&lt;br&gt;Peso : float(10,2)&lt;br&gt;Talla : float(10,2)" style="shape=rectangle;rounded=0;whiteSpace=wrap;html=1;fillColor=#ffffff;strokeColor=#6c8ebf;fontSize=11;align=left;spacingLeft=10;" vertex="1" parent="1">
+          <mxGeometry x="400" y="40" width="320" height="270" as="geometry"/>
+        </mxCell>
+        <mxCell id="4" value="&lt;b&gt;antecedentes&lt;/b&gt;&lt;br&gt;id_antecedente : int(11)&lt;br&gt;Paciente_Id : int(11)&lt;br&gt;Paciente_Especial_id : int(11)&lt;br&gt;Medico_id : int(11)&lt;br&gt;Fecha : date&lt;br&gt;Control_Historia_Medico_id : int(11)&lt;br&gt;id_Status : int(11)&lt;br&gt;Personal : text&lt;br&gt;Familiar : text&lt;br&gt;Farmacologico : text&lt;br&gt;Examen_Fisico : text&lt;br&gt;Imprecion_Diagnostica : text" style="shape=rectangle;rounded=0;whiteSpace=wrap;html=1;fillColor=#ffffff;strokeColor=#6c8ebf;fontSize=11;align=left;spacingLeft=10;" vertex="1" parent="1">
+          <mxGeometry x="760" y="40" width="320" height="222" as="geometry"/>
+        </mxCell>
+        <mxCell id="5" value="&lt;b&gt;bancos_bs&lt;/b&gt;&lt;br&gt;id_Bancos_Bs : int(11)&lt;br&gt;Bancos : varchar(200)&lt;br&gt;Status_Id : int(11)&lt;br&gt;Codigo_Bancario : int(11)" style="shape=rectangle;rounded=0;whiteSpace=wrap;html=1;fillColor=#ffffff;strokeColor=#6c8ebf;fontSize=11;align=left;spacingLeft=10;" vertex="1" parent="1">
+          <mxGeometry x="1120" y="40" width="320" height="100" as="geometry"/>
+        </mxCell>
+        <mxCell id="6" value="&lt;b&gt;billeteras_cripto&lt;/b&gt;&lt;br&gt;id_Billetera_Cripto : int(11)&lt;br&gt;Billetera : varchar(200)&lt;br&gt;Status_id : int(11)&lt;br&gt;Medicos_id : int(11)&lt;br&gt;Cripto_id : int(11)" style="shape=rectangle;rounded=0;whiteSpace=wrap;html=1;fillColor=#ffffff;strokeColor=#6c8ebf;fontSize=11;align=left;spacingLeft=10;" vertex="1" parent="1">
+          <mxGeometry x="1480" y="40" width="320" height="110" as="geometry"/>
+        </mxCell>
+        <mxCell id="7" value="&lt;b&gt;citas_consultas&lt;/b&gt;&lt;br&gt;id_Cita_Consulta : int(11)&lt;br&gt;Agenda_id : int(11)&lt;br&gt;Paciente_id : int(11)&lt;br&gt;Paciente_Especial_id : int(11)&lt;br&gt;Medico_id : int(11)&lt;br&gt;Asistente_id : int(11)&lt;br&gt;Horario_Cita_Paciente : int(11)&lt;br&gt;Max_paciente : int(11)&lt;br&gt;Costo : float(20,2)&lt;br&gt;Nota : varchar(200)&lt;br&gt;Status_Consulta_id : int(11)&lt;br&gt;title : varchar(255)&lt;br&gt;start : datetime&lt;br&gt;end : datetime&lt;br&gt;color : varchar(20)&lt;br&gt;confirmado : tinyint(1)&lt;br&gt;disponibilidad : int(100)&lt;br&gt;id_servicio : int(11)" style="shape=rectangle;rounded=0;whiteSpace=wrap;html=1;fillColor=#ffffff;strokeColor=#6c8ebf;fontSize=11;align=left;spacingLeft=10;" vertex="1" parent="1">
+          <mxGeometry x="1840" y="40" width="320" height="318" as="geometry"/>
+        </mxCell>
+        <mxCell id="8" value="&lt;b&gt;ciudades&lt;/b&gt;&lt;br&gt;id_Ciudad : int(11)&lt;br&gt;Estado_id : int(11)&lt;br&gt;Ciudad : varchar(200)&lt;br&gt;Capital : tinyint(4)" style="shape=rectangle;rounded=0;whiteSpace=wrap;html=1;fillColor=#ffffff;strokeColor=#6c8ebf;fontSize=11;align=left;spacingLeft=10;" vertex="1" parent="1">
+          <mxGeometry x="40" y="300" width="320" height="100" as="geometry"/>
+        </mxCell>
+        <mxCell id="9" value="&lt;b&gt;consultorios&lt;/b&gt;&lt;br&gt;id_Consultorio : int(11)&lt;br&gt;Direccion : varchar(200)&lt;br&gt;Local : varchar(200)&lt;br&gt;Telefono : varchar(20)&lt;br&gt;Celular : varchar(20)&lt;br&gt;Correo : varchar(200)&lt;br&gt;Especialidad_Medica_id : int(11)&lt;br&gt;Ciudad_id : int(11)&lt;br&gt;Estado_id : int(11)&lt;br&gt;Municipio_id : int(11)&lt;br&gt;Parroquia_id : int(11)&lt;br&gt;Status_id : int(11)" style="shape=rectangle;rounded=0;whiteSpace=wrap;html=1;fillColor=#ffffff;strokeColor=#6c8ebf;fontSize=11;align=left;spacingLeft=10;" vertex="1" parent="1">
+          <mxGeometry x="400" y="300" width="320" height="222" as="geometry"/>
+        </mxCell>
+        <mxCell id="10" value="&lt;b&gt;control_especialidades&lt;/b&gt;&lt;br&gt;id_Control_Especialidad : int(11)&lt;br&gt;Medico_id : int(11)&lt;br&gt;Especialidades_Medicas_id : int(11)&lt;br&gt;Status_Medico_id : int(11)" style="shape=rectangle;rounded=0;whiteSpace=wrap;html=1;fillColor=#ffffff;strokeColor=#6c8ebf;fontSize=11;align=left;spacingLeft=10;" vertex="1" parent="1">
+          <mxGeometry x="760" y="300" width="320" height="100" as="geometry"/>
+        </mxCell>
+        <mxCell id="11" value="&lt;b&gt;control_historia_medicas&lt;/b&gt;&lt;br&gt;id_Control_Historia_Medica : int(11)&lt;br&gt;Especialidad_Medica_id : int(11)&lt;br&gt;Control_Especialidad_id : int(11)&lt;br&gt;Medico_id : int(11)&lt;br&gt;Paciente_id : int(11)&lt;br&gt;Paciente_Especial_id : int(11)&lt;br&gt;Cita_Consulta_id : int(11)&lt;br&gt;Fecha : datetime&lt;br&gt;id_servicio : int(11)&lt;br&gt;cerrado : tinyint(1)&lt;br&gt;factura_generada : tinyint(1)" style="shape=rectangle;rounded=0;whiteSpace=wrap;html=1;fillColor=#ffffff;strokeColor=#6c8ebf;fontSize=11;align=left;spacingLeft=10;" vertex="1" parent="1">
+          <mxGeometry x="1120" y="300" width="320" height="206" as="geometry"/>
+        </mxCell>
+        <mxCell id="12" value="&lt;b&gt;criptos&lt;/b&gt;&lt;br&gt;id_Cripto : int(11)&lt;br&gt;Criptop : varchar(50)&lt;br&gt;Status_id : int(11)&lt;br&gt;Siglas : varchar(20)" style="shape=rectangle;rounded=0;whiteSpace=wrap;html=1;fillColor=#ffffff;strokeColor=#6c8ebf;fontSize=11;align=left;spacingLeft=10;" vertex="1" parent="1">
+          <mxGeometry x="1480" y="300" width="320" height="100" as="geometry"/>
+        </mxCell>
+        <mxCell id="13" value="&lt;b&gt;cuenta_bancaria_bs&lt;/b&gt;&lt;br&gt;id_Cuenta_Bancaria_BS : int(11)&lt;br&gt;Banco_id : int(11)&lt;br&gt;Medico_id : int(11)&lt;br&gt;Status_id : int(11)&lt;br&gt;Numero_Cuenta : varchar(30)&lt;br&gt;Tipo : int(11)&lt;br&gt;Fecha : datetime" style="shape=rectangle;rounded=0;whiteSpace=wrap;html=1;fillColor=#ffffff;strokeColor=#6c8ebf;fontSize=11;align=left;spacingLeft=10;" vertex="1" parent="1">
+          <mxGeometry x="1840" y="300" width="320" height="142" as="geometry"/>
+        </mxCell>
+        <mxCell id="14" value="&lt;b&gt;cuenta_usd&lt;/b&gt;&lt;br&gt;id_Cuenta_USD : int(11)&lt;br&gt;Entidad_USD_id : int(11)&lt;br&gt;Medico_id : int(11)&lt;br&gt;Status_Pago : int(11)&lt;br&gt;Numero_Cuenta : varchar(20)&lt;br&gt;Tipo : int(11)&lt;br&gt;Fecha : date" style="shape=rectangle;rounded=0;whiteSpace=wrap;html=1;fillColor=#ffffff;strokeColor=#6c8ebf;fontSize=11;align=left;spacingLeft=10;" vertex="1" parent="1">
+          <mxGeometry x="40" y="560" width="320" height="142" as="geometry"/>
+        </mxCell>
+        <mxCell id="15" value="&lt;b&gt;datos_seniat&lt;/b&gt;&lt;br&gt;id_Datos_SENIAT : int(11)&lt;br&gt;RIF : varchar(20)&lt;br&gt;Direccion : varchar(200)&lt;br&gt;Medico_id : int(11)&lt;br&gt;Fecha : datetime" style="shape=rectangle;rounded=0;whiteSpace=wrap;html=1;fillColor=#ffffff;strokeColor=#6c8ebf;fontSize=11;align=left;spacingLeft=10;" vertex="1" parent="1">
+          <mxGeometry x="400" y="560" width="320" height="110" as="geometry"/>
+        </mxCell>
+        <mxCell id="16" value="&lt;b&gt;direcciones_pacientes&lt;/b&gt;&lt;br&gt;id_Direccion_Paciente : int(11)&lt;br&gt;Paciente_id : int(11)&lt;br&gt;Direccion : mediumtext&lt;br&gt;Numero_Casa : varchar(200)&lt;br&gt;Telefono : varchar(200)&lt;br&gt;Celular : varchar(200)&lt;br&gt;Correo : varchar(200)&lt;br&gt;Cuidad_id : int(11)&lt;br&gt;Estado_id : int(11)&lt;br&gt;Municipio_id : int(11)&lt;br&gt;Parroquia_id : int(11)" style="shape=rectangle;rounded=0;whiteSpace=wrap;html=1;fillColor=#ffffff;strokeColor=#6c8ebf;fontSize=11;align=left;spacingLeft=10;" vertex="1" parent="1">
+          <mxGeometry x="760" y="560" width="320" height="206" as="geometry"/>
+        </mxCell>
+        <mxCell id="17" value="&lt;b&gt;entidades_usd&lt;/b&gt;&lt;br&gt;id_Entidad_USD : int(11)&lt;br&gt;Entidad_USD : varchar(200)&lt;br&gt;Status_id : int(11)&lt;br&gt;Referencia : int(11)" style="shape=rectangle;rounded=0;whiteSpace=wrap;html=1;fillColor=#ffffff;strokeColor=#6c8ebf;fontSize=11;align=left;spacingLeft=10;" vertex="1" parent="1">
+          <mxGeometry x="1120" y="560" width="320" height="100" as="geometry"/>
+        </mxCell>
+        <mxCell id="18" value="&lt;b&gt;especialidades_medicas&lt;/b&gt;&lt;br&gt;id_Especialidad_Medica : int(11)&lt;br&gt;Espacialiadad_Medica : varchar(200)" style="shape=rectangle;rounded=0;whiteSpace=wrap;html=1;fillColor=#ffffff;strokeColor=#6c8ebf;fontSize=11;align=left;spacingLeft=10;" vertex="1" parent="1">
+          <mxGeometry x="1480" y="560" width="320" height="100" as="geometry"/>
+        </mxCell>
+        <mxCell id="19" value="&lt;b&gt;estados&lt;/b&gt;&lt;br&gt;id_Estado : int(11)&lt;br&gt;Estado : varchar(200)" style="shape=rectangle;rounded=0;whiteSpace=wrap;html=1;fillColor=#ffffff;strokeColor=#6c8ebf;fontSize=11;align=left;spacingLeft=10;" vertex="1" parent="1">
+          <mxGeometry x="1840" y="560" width="320" height="100" as="geometry"/>
+        </mxCell>
+        <mxCell id="20" value="&lt;b&gt;estados_civiles&lt;/b&gt;&lt;br&gt;id_Civil : int(11)&lt;br&gt;Civil : varchar(20)" style="shape=rectangle;rounded=0;whiteSpace=wrap;html=1;fillColor=#ffffff;strokeColor=#6c8ebf;fontSize=11;align=left;spacingLeft=10;" vertex="1" parent="1">
+          <mxGeometry x="40" y="820" width="320" height="100" as="geometry"/>
+        </mxCell>
+        <mxCell id="21" value="&lt;b&gt;facturas&lt;/b&gt;&lt;br&gt;id_Factura : int(11)&lt;br&gt;Cita_Consulta_id : int(11)&lt;br&gt;Fecha : datetime&lt;br&gt;Datos_SENIAT_id : int(11)&lt;br&gt;Pacientes_id : int(11)&lt;br&gt;Status_Factura_id : int(11)&lt;br&gt;Relacion_Medico : int(11)&lt;br&gt;Medico_id : int(11)&lt;br&gt;Asistente_id : int(11)&lt;br&gt;Nombre : varchar(50)&lt;br&gt;Apellido : varchar(50)&lt;br&gt;CIDNI : varchar(20)&lt;br&gt;Status_no_paciente : int(11)&lt;br&gt;moneda_cancela : varchar(10)" style="shape=rectangle;rounded=0;whiteSpace=wrap;html=1;fillColor=#ffffff;strokeColor=#6c8ebf;fontSize=11;align=left;spacingLeft=10;" vertex="1" parent="1">
+          <mxGeometry x="400" y="820" width="320" height="254" as="geometry"/>
+        </mxCell>
+        <mxCell id="22" value="&lt;b&gt;factura_detalle&lt;/b&gt;&lt;br&gt;id_Factura_Detalle : int(11)&lt;br&gt;Factura_id : int(11)&lt;br&gt;Servicio_id : int(11)&lt;br&gt;Cantidad : int(11)&lt;br&gt;Costo_Servicio : decimal(10,2)&lt;br&gt;moneda : varchar(11)&lt;br&gt;iva : decimal(10,2)&lt;br&gt;Status_Factura_id : int(11)" style="shape=rectangle;rounded=0;whiteSpace=wrap;html=1;fillColor=#ffffff;strokeColor=#6c8ebf;fontSize=11;align=left;spacingLeft=10;" vertex="1" parent="1">
+          <mxGeometry x="760" y="820" width="320" height="158" as="geometry"/>
+        </mxCell>
+        <mxCell id="23" value="&lt;b&gt;factura_total_bs&lt;/b&gt;&lt;br&gt;id_Factura_BS : int(11)&lt;br&gt;Factura_Id : int(11)&lt;br&gt;Status_Tasa_id : int(11)&lt;br&gt;Status_Pago : int(11)&lt;br&gt;Cuenta_Bancaria_BS_id : int(11)&lt;br&gt;Efectivo : decimal(10,2)&lt;br&gt;Total_Cancelado : decimal(10,2)&lt;br&gt;Referencia_Bancaria : varchar(200)&lt;br&gt;Tipo_Pago_id : int(11)&lt;br&gt;comprobante : varchar(255)&lt;br&gt;banco_emisor : int(11)" style="shape=rectangle;rounded=0;whiteSpace=wrap;html=1;fillColor=#ffffff;strokeColor=#6c8ebf;fontSize=11;align=left;spacingLeft=10;" vertex="1" parent="1">
+          <mxGeometry x="1120" y="820" width="320" height="206" as="geometry"/>
+        </mxCell>
+        <mxCell id="24" value="&lt;b&gt;factura_total_cripto&lt;/b&gt;&lt;br&gt;Id_Factura_Cripto : int(11)&lt;br&gt;Factura_id : int(11)&lt;br&gt;Status_Tasa_id : int(11)&lt;br&gt;Status_Pago : int(11)&lt;br&gt;Billetera_Cripto_id : int(11)&lt;br&gt;Total_Cancelado : int(11)&lt;br&gt;Referencia : varchar(200)&lt;br&gt;Gas : decimal(10,0)&lt;br&gt;Nota : varchar(200)&lt;br&gt;Tipo_Pago_id : int(11)&lt;br&gt;comprobante : varchar(255)&lt;br&gt;billetera_emisora : int(11)" style="shape=rectangle;rounded=0;whiteSpace=wrap;html=1;fillColor=#ffffff;strokeColor=#6c8ebf;fontSize=11;align=left;spacingLeft=10;" vertex="1" parent="1">
+          <mxGeometry x="1480" y="820" width="320" height="222" as="geometry"/>
+        </mxCell>
+        <mxCell id="25" value="&lt;b&gt;factura_total_usd&lt;/b&gt;&lt;br&gt;id_Factura_USD : int(11)&lt;br&gt;Factura_id : int(11)&lt;br&gt;Status_Tasa_id : int(11)&lt;br&gt;Status_Pago : int(11)&lt;br&gt;Cuenta_USD_id : int(11)&lt;br&gt;Efectivo : int(11)&lt;br&gt;Total_Cancelado : decimal(10,2)&lt;br&gt;Referencia : varchar(200)&lt;br&gt;Tipo_Pago_id : int(11)&lt;br&gt;impuesto : decimal(10,2)&lt;br&gt;comprobante : varchar(255)&lt;br&gt;entidad_emisora : int(11)" style="shape=rectangle;rounded=0;whiteSpace=wrap;html=1;fillColor=#ffffff;strokeColor=#6c8ebf;fontSize=11;align=left;spacingLeft=10;" vertex="1" parent="1">
+          <mxGeometry x="1840" y="820" width="320" height="222" as="geometry"/>
+        </mxCell>
+        <mxCell id="26" value="&lt;b&gt;historico_login_pacientes&lt;/b&gt;&lt;br&gt;id_Login_Pacientes : int(11)&lt;br&gt;Login_Pacientes_id : int(11)&lt;br&gt;Old_contrasena : varchar(200)&lt;br&gt;Fecha : datetime&lt;br&gt;Paciente_id : int(11)&lt;br&gt;Correo : varchar(200)&lt;br&gt;Nota : varchar(200)" style="shape=rectangle;rounded=0;whiteSpace=wrap;html=1;fillColor=#ffffff;strokeColor=#6c8ebf;fontSize=11;align=left;spacingLeft=10;" vertex="1" parent="1">
+          <mxGeometry x="40" y="1080" width="320" height="142" as="geometry"/>
+        </mxCell>
+        <mxCell id="27" value="&lt;b&gt;historico_login_trabajadores&lt;/b&gt;&lt;br&gt;id_Login_Trabajadores : int(11)&lt;br&gt;Login_Tranajador_id : int(11)&lt;br&gt;Old_Constrasena : varchar(200)&lt;br&gt;Fecha : datetime&lt;br&gt;Medico_id : int(11)&lt;br&gt;Asistente_id : int(11)&lt;br&gt;Correo : varchar(200)&lt;br&gt;Nota : varchar(200)" style="shape=rectangle;rounded=0;whiteSpace=wrap;html=1;fillColor=#ffffff;strokeColor=#6c8ebf;fontSize=11;align=left;spacingLeft=10;" vertex="1" parent="1">
+          <mxGeometry x="400" y="1080" width="320" height="158" as="geometry"/>
+        </mxCell>
+        <mxCell id="28" value="&lt;b&gt;historico_pediatria&lt;/b&gt;&lt;br&gt;id_Historico_Pediatria : int(11)&lt;br&gt;Fecha : datetime&lt;br&gt;Dato1 : int(11)&lt;br&gt;Dato2 : int(11)&lt;br&gt;Dato3 : int(11)&lt;br&gt;Paciente_id : int(11)&lt;br&gt;Medico_id : int(11)&lt;br&gt;Paciente_pediatrico_Id : int(11)&lt;br&gt;Cita_Consulta_id : int(11)&lt;br&gt;Pediatria_id : int(11)" style="shape=rectangle;rounded=0;whiteSpace=wrap;html=1;fillColor=#ffffff;strokeColor=#6c8ebf;fontSize=11;align=left;spacingLeft=10;" vertex="1" parent="1">
+          <mxGeometry x="760" y="1080" width="320" height="190" as="geometry"/>
+        </mxCell>
+        <mxCell id="29" value="&lt;b&gt;horarios_citas&lt;/b&gt;&lt;br&gt;id_Horario_Cita : int(11)&lt;br&gt;Medico_id : int(11)&lt;br&gt;Especialidad_id : int(11)&lt;br&gt;turno_id : int(11)&lt;br&gt;Domicilio : int(11)&lt;br&gt;Hora_Inicio_Lunes : time&lt;br&gt;Hora_Fin_Lunes : time&lt;br&gt;Lunes : int(11)&lt;br&gt;Hora_Inicio_Martes : time&lt;br&gt;Hora_Fin_Martes : time&lt;br&gt;Martes : int(11)&lt;br&gt;Horario_Inicio_Miercoles : time&lt;br&gt;Horario_Fin_Miercoles : time&lt;br&gt;Miercoles : int(11)&lt;br&gt;Horario_Inicio_Jueves : time&lt;br&gt;Horario_Fin_Jueves : time&lt;br&gt;Jueves : int(11)&lt;br&gt;Horario_Inicio_Viernes : time&lt;br&gt;Horario_Fin_Viernes : time&lt;br&gt;Viernes : int(11)&lt;br&gt;Horario_Inicio_Sabado : time&lt;br&gt;Horario_Fin_Sabado : time&lt;br&gt;Sabado : int(11)&lt;br&gt;Horario_inicio_Domingo : time&lt;br&gt;Horario_Fin_Domingo : time&lt;br&gt;Domingo : int(11)" style="shape=rectangle;rounded=0;whiteSpace=wrap;html=1;fillColor=#ffffff;strokeColor=#6c8ebf;fontSize=11;align=left;spacingLeft=10;" vertex="1" parent="1">
+          <mxGeometry x="1120" y="1080" width="320" height="446" as="geometry"/>
+        </mxCell>
+        <mxCell id="30" value="&lt;b&gt;limite_usuarios&lt;/b&gt;&lt;br&gt;id : int(11)&lt;br&gt;administrativo : int(11)&lt;br&gt;medico : int(11)&lt;br&gt;asistente : int(11)&lt;br&gt;paciente : int(11)&lt;br&gt;status : int(11)&lt;br&gt;created_at : datetime&lt;br&gt;updated_at : datetime" style="shape=rectangle;rounded=0;whiteSpace=wrap;html=1;fillColor=#ffffff;strokeColor=#6c8ebf;fontSize=11;align=left;spacingLeft=10;" vertex="1" parent="1">
+          <mxGeometry x="1480" y="1080" width="320" height="158" as="geometry"/>
+        </mxCell>
+        <mxCell id="31" value="&lt;b&gt;login_pacientes&lt;/b&gt;&lt;br&gt;id_login_Pacientes : int(11)&lt;br&gt;Paciente_id : int(11)&lt;br&gt;Usuario : varchar(200)&lt;br&gt;Correo : varchar(200)&lt;br&gt;Status_id : int(11)&lt;br&gt;Contrasena : varchar(200)" style="shape=rectangle;rounded=0;whiteSpace=wrap;html=1;fillColor=#ffffff;strokeColor=#6c8ebf;fontSize=11;align=left;spacingLeft=10;" vertex="1" parent="1">
+          <mxGeometry x="1840" y="1080" width="320" height="126" as="geometry"/>
+        </mxCell>
+        <mxCell id="32" value="&lt;b&gt;login_trabajadores&lt;/b&gt;&lt;br&gt;id_Login_Trabajador : int(11)&lt;br&gt;Usuario : varchar(200)&lt;br&gt;Correo : varchar(200)&lt;br&gt;Status_Medico_id : int(11)&lt;br&gt;Contrasena : varchar(200)&lt;br&gt;Medico_id : int(11)&lt;br&gt;Asistente_id : int(11)&lt;br&gt;general_id : int(11)" style="shape=rectangle;rounded=0;whiteSpace=wrap;html=1;fillColor=#ffffff;strokeColor=#6c8ebf;fontSize=11;align=left;spacingLeft=10;" vertex="1" parent="1">
+          <mxGeometry x="40" y="1340" width="320" height="158" as="geometry"/>
+        </mxCell>
+        <mxCell id="33" value="&lt;b&gt;medicoxasistente&lt;/b&gt;&lt;br&gt;id : int(11)&lt;br&gt;id_Medico : int(11)&lt;br&gt;id_Asistente : int(11)" style="shape=rectangle;rounded=0;whiteSpace=wrap;html=1;fillColor=#ffffff;strokeColor=#6c8ebf;fontSize=11;align=left;spacingLeft=10;" vertex="1" parent="1">
+          <mxGeometry x="400" y="1340" width="320" height="100" as="geometry"/>
+        </mxCell>
+        <mxCell id="34" value="&lt;b&gt;meetings&lt;/b&gt;&lt;br&gt;id : bigint(20)&lt;br&gt;uuid : char(36)&lt;br&gt;topic : varchar(125)&lt;br&gt;start_time : datetime&lt;br&gt;duration : int(11)&lt;br&gt;started_at : datetime&lt;br&gt;ended_at : datetime&lt;br&gt;provider : varchar(125)&lt;br&gt;scheduler_type : varchar(125)&lt;br&gt;scheduler_id : bigint(20)&lt;br&gt;presenter_type : varchar(125)&lt;br&gt;presenter_id : bigint(20)&lt;br&gt;host_type : varchar(125)&lt;br&gt;host_id : bigint(20)&lt;br&gt;created_at : timestamp&lt;br&gt;updated_at : timestamp&lt;br&gt;deleted_at : timestamp" style="shape=rectangle;rounded=0;whiteSpace=wrap;html=1;fillColor=#ffffff;strokeColor=#6c8ebf;fontSize=11;align=left;spacingLeft=10;" vertex="1" parent="1">
+          <mxGeometry x="760" y="1340" width="320" height="302" as="geometry"/>
+        </mxCell>
+        <mxCell id="35" value="&lt;b&gt;meeting_participants&lt;/b&gt;&lt;br&gt;uuid : char(36)&lt;br&gt;started_at : datetime&lt;br&gt;ended_at : datetime&lt;br&gt;participant_type : varchar(125)&lt;br&gt;participant_id : bigint(20)&lt;br&gt;meeting_id : bigint(20)&lt;br&gt;created_at : timestamp&lt;br&gt;updated_at : timestamp&lt;br&gt;deleted_at : timestamp" style="shape=rectangle;rounded=0;whiteSpace=wrap;html=1;fillColor=#ffffff;strokeColor=#6c8ebf;fontSize=11;align=left;spacingLeft=10;" vertex="1" parent="1">
+          <mxGeometry x="1120" y="1340" width="320" height="174" as="geometry"/>
+        </mxCell>
+        <mxCell id="36" value="&lt;b&gt;meeting_rooms&lt;/b&gt;&lt;br&gt;id : bigint(20)&lt;br&gt;uuid : char(36)&lt;br&gt;name : varchar(100)&lt;br&gt;email : varchar(125)&lt;br&gt;type : tinyint(4)&lt;br&gt;group : varchar(125)&lt;br&gt;created_at : timestamp&lt;br&gt;updated_at : timestamp&lt;br&gt;deleted_at : timestamp" style="shape=rectangle;rounded=0;whiteSpace=wrap;html=1;fillColor=#ffffff;strokeColor=#6c8ebf;fontSize=11;align=left;spacingLeft=10;" vertex="1" parent="1">
+          <mxGeometry x="1480" y="1340" width="320" height="174" as="geometry"/>
+        </mxCell>
+        <mxCell id="37" value="&lt;b&gt;meta_attributes&lt;/b&gt;&lt;br&gt;id : bigint(20)&lt;br&gt;key : varchar(125)&lt;br&gt;value : text&lt;br&gt;type : varchar(125)&lt;br&gt;model_type : varchar(125)&lt;br&gt;model_id : char(36)&lt;br&gt;created_at : timestamp&lt;br&gt;updated_at : timestamp" style="shape=rectangle;rounded=0;whiteSpace=wrap;html=1;fillColor=#ffffff;strokeColor=#6c8ebf;fontSize=11;align=left;spacingLeft=10;" vertex="1" parent="1">
+          <mxGeometry x="1840" y="1340" width="320" height="158" as="geometry"/>
+        </mxCell>
+        <mxCell id="38" value="&lt;b&gt;migrations&lt;/b&gt;&lt;br&gt;id : int(10)&lt;br&gt;migration : varchar(255)&lt;br&gt;batch : int(11)" style="shape=rectangle;rounded=0;whiteSpace=wrap;html=1;fillColor=#ffffff;strokeColor=#6c8ebf;fontSize=11;align=left;spacingLeft=10;" vertex="1" parent="1">
+          <mxGeometry x="40" y="1600" width="320" height="100" as="geometry"/>
+        </mxCell>
+        <mxCell id="39" value="&lt;b&gt;model_has_permissions&lt;/b&gt;&lt;br&gt;permission_id : bigint(20)&lt;br&gt;model_type : varchar(125)&lt;br&gt;model_id : bigint(20)" style="shape=rectangle;rounded=0;whiteSpace=wrap;html=1;fillColor=#ffffff;strokeColor=#6c8ebf;fontSize=11;align=left;spacingLeft=10;" vertex="1" parent="1">
+          <mxGeometry x="400" y="1600" width="320" height="100" as="geometry"/>
+        </mxCell>
+        <mxCell id="40" value="&lt;b&gt;model_has_roles&lt;/b&gt;&lt;br&gt;role_id : bigint(20)&lt;br&gt;model_type : varchar(125)&lt;br&gt;model_id : bigint(20)" style="shape=rectangle;rounded=0;whiteSpace=wrap;html=1;fillColor=#ffffff;strokeColor=#6c8ebf;fontSize=11;align=left;spacingLeft=10;" vertex="1" parent="1">
+          <mxGeometry x="760" y="1600" width="320" height="100" as="geometry"/>
+        </mxCell>
+        <mxCell id="41" value="&lt;b&gt;municipios&lt;/b&gt;&lt;br&gt;id_Municipio : int(11)&lt;br&gt;Estado_id : int(11)&lt;br&gt;Municipio : varchar(200)" style="shape=rectangle;rounded=0;whiteSpace=wrap;html=1;fillColor=#ffffff;strokeColor=#6c8ebf;fontSize=11;align=left;spacingLeft=10;" vertex="1" parent="1">
+          <mxGeometry x="1120" y="1600" width="320" height="100" as="geometry"/>
+        </mxCell>
+        <mxCell id="42" value="&lt;b&gt;pacientes_especiales&lt;/b&gt;&lt;br&gt;id_Pacientes_Especiales : int(11)&lt;br&gt;Paciente_id : int(11)&lt;br&gt;Nombre_Paciente_Especial : varchar(200)&lt;br&gt;Apellido_Paciente_Especial : varchar(200)&lt;br&gt;Fecha_Nacimiento_Paciente_Especial : date&lt;br&gt;Sexo_id : int(11)&lt;br&gt;Parentesco_Familiar : varchar(200)&lt;br&gt;Prefijo_CIDNI_id : int(11)&lt;br&gt;CIDNI : varchar(20)&lt;br&gt;Status_id : int(11)&lt;br&gt;Paciente_Infantil : char(1)&lt;br&gt;Paciente_Mayor : char(1)&lt;br&gt;Paciente_Discapacidad : char(1)&lt;br&gt;Nota : varchar(200)&lt;br&gt;Civil_id : int(11)&lt;br&gt;Pais_id : int(11)" style="shape=rectangle;rounded=0;whiteSpace=wrap;html=1;fillColor=#ffffff;strokeColor=#6c8ebf;fontSize=11;align=left;spacingLeft=10;" vertex="1" parent="1">
+          <mxGeometry x="1480" y="1600" width="320" height="286" as="geometry"/>
+        </mxCell>
+        <mxCell id="43" value="&lt;b&gt;pagos_confirmar&lt;/b&gt;&lt;br&gt;id_pago : int(11)&lt;br&gt;Paciente_id : int(11)&lt;br&gt;moneda_id : varchar(10)&lt;br&gt;monto : decimal(10,2)&lt;br&gt;referencia : varchar(100)&lt;br&gt;fecha_pago : date&lt;br&gt;tipo_pago : int(11)&lt;br&gt;cuenta_bs : int(11)&lt;br&gt;cuenta_usd : int(11)&lt;br&gt;banco_emisor : int(11)&lt;br&gt;entidad_emisora : int(11)&lt;br&gt;billetera_emisora : int(11)&lt;br&gt;comprobante : varchar(255)&lt;br&gt;impuesto_dolar : double(10,2)&lt;br&gt;confirmado : tinyint(1)" style="shape=rectangle;rounded=0;whiteSpace=wrap;html=1;fillColor=#ffffff;strokeColor=#6c8ebf;fontSize=11;align=left;spacingLeft=10;" vertex="1" parent="1">
+          <mxGeometry x="1840" y="1600" width="320" height="270" as="geometry"/>
+        </mxCell>
+        <mxCell id="44" value="&lt;b&gt;paises&lt;/b&gt;&lt;br&gt;id_Pais : int(11)&lt;br&gt;Codigo : int(11)&lt;br&gt;iso3166a1 : char(2)&lt;br&gt;iso3166a2 : char(5)&lt;br&gt;Pais : varchar(128)" style="shape=rectangle;rounded=0;whiteSpace=wrap;html=1;fillColor=#ffffff;strokeColor=#6c8ebf;fontSize=11;align=left;spacingLeft=10;" vertex="1" parent="1">
+          <mxGeometry x="40" y="1860" width="320" height="110" as="geometry"/>
+        </mxCell>
+        <mxCell id="45" value="&lt;b&gt;parroquias&lt;/b&gt;&lt;br&gt;id_Parroquia : int(11)&lt;br&gt;Municipio_id : int(11)&lt;br&gt;Parroquia : varchar(200)" style="shape=rectangle;rounded=0;whiteSpace=wrap;html=1;fillColor=#ffffff;strokeColor=#6c8ebf;fontSize=11;align=left;spacingLeft=10;" vertex="1" parent="1">
+          <mxGeometry x="400" y="1860" width="320" height="100" as="geometry"/>
+        </mxCell>
+        <mxCell id="46" value="&lt;b&gt;password_resets&lt;/b&gt;&lt;br&gt;email : varchar(125)&lt;br&gt;token : varchar(125)&lt;br&gt;created_at : timestamp" style="shape=rectangle;rounded=0;whiteSpace=wrap;html=1;fillColor=#ffffff;strokeColor=#6c8ebf;fontSize=11;align=left;spacingLeft=10;" vertex="1" parent="1">
+          <mxGeometry x="760" y="1860" width="320" height="100" as="geometry"/>
+        </mxCell>
+        <mxCell id="47" value="&lt;b&gt;pediatria&lt;/b&gt;&lt;br&gt;id_Pediatria : int(11)&lt;br&gt;Paciente_Id : int(11)&lt;br&gt;Paciente_Infantil_id : int(11)&lt;br&gt;Medico_id : int(11)&lt;br&gt;Fecha : datetime&lt;br&gt;Pediatrico : int(11)&lt;br&gt;Control_Historia_Medico_id : int(11)&lt;br&gt;Dato1 : int(11)&lt;br&gt;Dato2 : int(11)&lt;br&gt;Dato3 : int(11)" style="shape=rectangle;rounded=0;whiteSpace=wrap;html=1;fillColor=#ffffff;strokeColor=#6c8ebf;fontSize=11;align=left;spacingLeft=10;" vertex="1" parent="1">
+          <mxGeometry x="1120" y="1860" width="320" height="190" as="geometry"/>
+        </mxCell>
+        <mxCell id="48" value="&lt;b&gt;permissions&lt;/b&gt;&lt;br&gt;id : bigint(20)&lt;br&gt;name : varchar(125)&lt;br&gt;description : varchar(100)&lt;br&gt;guard_name : varchar(125)&lt;br&gt;created_at : timestamp&lt;br&gt;updated_at : timestamp" style="shape=rectangle;rounded=0;whiteSpace=wrap;html=1;fillColor=#ffffff;strokeColor=#6c8ebf;fontSize=11;align=left;spacingLeft=10;" vertex="1" parent="1">
+          <mxGeometry x="1480" y="1860" width="320" height="126" as="geometry"/>
+        </mxCell>
+        <mxCell id="49" value="&lt;b&gt;prefijos_cidni&lt;/b&gt;&lt;br&gt;id_Prefijo_CIDNI : int(11)&lt;br&gt;Prefijo_CIDNI : varchar(20)" style="shape=rectangle;rounded=0;whiteSpace=wrap;html=1;fillColor=#ffffff;strokeColor=#6c8ebf;fontSize=11;align=left;spacingLeft=10;" vertex="1" parent="1">
+          <mxGeometry x="1840" y="1860" width="320" height="100" as="geometry"/>
+        </mxCell>
+        <mxCell id="50" value="&lt;b&gt;roles&lt;/b&gt;&lt;br&gt;id : bigint(20)&lt;br&gt;name : varchar(125)&lt;br&gt;guard_name : varchar(125)&lt;br&gt;created_at : timestamp&lt;br&gt;updated_at : timestamp" style="shape=rectangle;rounded=0;whiteSpace=wrap;html=1;fillColor=#ffffff;strokeColor=#6c8ebf;fontSize=11;align=left;spacingLeft=10;" vertex="1" parent="1">
+          <mxGeometry x="40" y="2120" width="320" height="110" as="geometry"/>
+        </mxCell>
+        <mxCell id="51" value="&lt;b&gt;role_has_permissions&lt;/b&gt;&lt;br&gt;permission_id : bigint(20)&lt;br&gt;role_id : bigint(20)" style="shape=rectangle;rounded=0;whiteSpace=wrap;html=1;fillColor=#ffffff;strokeColor=#6c8ebf;fontSize=11;align=left;spacingLeft=10;" vertex="1" parent="1">
+          <mxGeometry x="400" y="2120" width="320" height="100" as="geometry"/>
+        </mxCell>
+        <mxCell id="52" value="&lt;b&gt;servicios&lt;/b&gt;&lt;br&gt;id_Servicio : int(11)&lt;br&gt;Servicio : varchar(200)&lt;br&gt;Costos : decimal(10,2)&lt;br&gt;simbolo : varchar(10)&lt;br&gt;Especialidad_Medica_id : int(11)&lt;br&gt;Medico_id : int(11)&lt;br&gt;Status_id : int(11)&lt;br&gt;duracion : time" style="shape=rectangle;rounded=0;whiteSpace=wrap;html=1;fillColor=#ffffff;strokeColor=#6c8ebf;fontSize=11;align=left;spacingLeft=10;" vertex="1" parent="1">
+          <mxGeometry x="760" y="2120" width="320" height="158" as="geometry"/>
+        </mxCell>
+        <mxCell id="53" value="&lt;b&gt;servicios_adicionales&lt;/b&gt;&lt;br&gt;id : int(11)&lt;br&gt;Cita_Consulta_id : int(11)&lt;br&gt;id_servicio : int(11)&lt;br&gt;nota : varchar(200)" style="shape=rectangle;rounded=0;whiteSpace=wrap;html=1;fillColor=#ffffff;strokeColor=#6c8ebf;fontSize=11;align=left;spacingLeft=10;" vertex="1" parent="1">
+          <mxGeometry x="1120" y="2120" width="320" height="100" as="geometry"/>
+        </mxCell>
+        <mxCell id="54" value="&lt;b&gt;sexos&lt;/b&gt;&lt;br&gt;id_Sexo : int(11)&lt;br&gt;Sexo : varchar(20)" style="shape=rectangle;rounded=0;whiteSpace=wrap;html=1;fillColor=#ffffff;strokeColor=#6c8ebf;fontSize=11;align=left;spacingLeft=10;" vertex="1" parent="1">
+          <mxGeometry x="1480" y="2120" width="320" height="100" as="geometry"/>
+        </mxCell>
+        <mxCell id="55" value="&lt;b&gt;status&lt;/b&gt;&lt;br&gt;id_Status : int(11)&lt;br&gt;Status : varchar(200)&lt;br&gt;color : varchar(20)&lt;br&gt;Nota : varchar(200)" style="shape=rectangle;rounded=0;whiteSpace=wrap;html=1;fillColor=#ffffff;strokeColor=#6c8ebf;fontSize=11;align=left;spacingLeft=10;" vertex="1" parent="1">
+          <mxGeometry x="1840" y="2120" width="320" height="100" as="geometry"/>
+        </mxCell>
+        <mxCell id="56" value="&lt;b&gt;status_consultas&lt;/b&gt;&lt;br&gt;id_Consulta : int(11)&lt;br&gt;Consulta : varchar(200)&lt;br&gt;color : varchar(20)&lt;br&gt;Nota : varchar(200)" style="shape=rectangle;rounded=0;whiteSpace=wrap;html=1;fillColor=#ffffff;strokeColor=#6c8ebf;fontSize=11;align=left;spacingLeft=10;" vertex="1" parent="1">
+          <mxGeometry x="40" y="2380" width="320" height="100" as="geometry"/>
+        </mxCell>
+        <mxCell id="57" value="&lt;b&gt;status_factura&lt;/b&gt;&lt;br&gt;id_Status_Factura : int(11)&lt;br&gt;Status_Factura : varchar(200)&lt;br&gt;color : varchar(20)&lt;br&gt;Nota : varchar(200)" style="shape=rectangle;rounded=0;whiteSpace=wrap;html=1;fillColor=#ffffff;strokeColor=#6c8ebf;fontSize=11;align=left;spacingLeft=10;" vertex="1" parent="1">
+          <mxGeometry x="400" y="2380" width="320" height="100" as="geometry"/>
+        </mxCell>
+        <mxCell id="58" value="&lt;b&gt;status_medicos&lt;/b&gt;&lt;br&gt;id_Status_Medico : int(11)&lt;br&gt;Status_Medico : varchar(20)&lt;br&gt;color : varchar(10)&lt;br&gt;Nota : varchar(200)" style="shape=rectangle;rounded=0;whiteSpace=wrap;html=1;fillColor=#ffffff;strokeColor=#6c8ebf;fontSize=11;align=left;spacingLeft=10;" vertex="1" parent="1">
+          <mxGeometry x="760" y="2380" width="320" height="100" as="geometry"/>
+        </mxCell>
+        <mxCell id="59" value="&lt;b&gt;status_tasas&lt;/b&gt;&lt;br&gt;id_Status_Tasa : int(11)&lt;br&gt;Tasa : varchar(20)&lt;br&gt;color : varchar(20)&lt;br&gt;Nota : varchar(200)" style="shape=rectangle;rounded=0;whiteSpace=wrap;html=1;fillColor=#ffffff;strokeColor=#6c8ebf;fontSize=11;align=left;spacingLeft=10;" vertex="1" parent="1">
+          <mxGeometry x="1120" y="2380" width="320" height="100" as="geometry"/>
+        </mxCell>
+        <mxCell id="60" value="&lt;b&gt;tasa_cambio&lt;/b&gt;&lt;br&gt;id_Tasa_Cambio : int(11)&lt;br&gt;BS : decimal(10,2)&lt;br&gt;USD : decimal(10,2)&lt;br&gt;BitCoins : varchar(100)&lt;br&gt;Ethereum : varchar(100)&lt;br&gt;Fecha : date&lt;br&gt;Status_Tasa_id : int(11)" style="shape=rectangle;rounded=0;whiteSpace=wrap;html=1;fillColor=#ffffff;strokeColor=#6c8ebf;fontSize=11;align=left;spacingLeft=10;" vertex="1" parent="1">
+          <mxGeometry x="1480" y="2380" width="320" height="142" as="geometry"/>
+        </mxCell>
+        <mxCell id="61" value="&lt;b&gt;tipos_cuentas&lt;/b&gt;&lt;br&gt;id_Cuenta : int(11)&lt;br&gt;descripcion : varchar(150)" style="shape=rectangle;rounded=0;whiteSpace=wrap;html=1;fillColor=#ffffff;strokeColor=#6c8ebf;fontSize=11;align=left;spacingLeft=10;" vertex="1" parent="1">
+          <mxGeometry x="1840" y="2380" width="320" height="100" as="geometry"/>
+        </mxCell>
+        <mxCell id="62" value="&lt;b&gt;tipo_pagos&lt;/b&gt;&lt;br&gt;id_Tipos_Pago : int(11)&lt;br&gt;Tipo_Pago : varchar(20)" style="shape=rectangle;rounded=0;whiteSpace=wrap;html=1;fillColor=#ffffff;strokeColor=#6c8ebf;fontSize=11;align=left;spacingLeft=10;" vertex="1" parent="1">
+          <mxGeometry x="40" y="2640" width="320" height="100" as="geometry"/>
+        </mxCell>
+        <mxCell id="63" value="&lt;b&gt;turnos&lt;/b&gt;&lt;br&gt;id_turno : int(11)&lt;br&gt;nombre : varchar(150)" style="shape=rectangle;rounded=0;whiteSpace=wrap;html=1;fillColor=#ffffff;strokeColor=#6c8ebf;fontSize=11;align=left;spacingLeft=10;" vertex="1" parent="1">
+          <mxGeometry x="400" y="2640" width="320" height="100" as="geometry"/>
+        </mxCell>
+        <mxCell id="64" value="&lt;b&gt;users&lt;/b&gt;&lt;br&gt;id : bigint(20)&lt;br&gt;name : varchar(255)&lt;br&gt;email : varchar(150)&lt;br&gt;email_verified_at : timestamp&lt;br&gt;password : varchar(255)&lt;br&gt;remember_token : varchar(100)&lt;br&gt;status : char(1)&lt;br&gt;id_usuario : int(11)&lt;br&gt;id_usuarioA : int(11)&lt;br&gt;id_usuarioP : int(11)&lt;br&gt;id_usuarioG : int(11)&lt;br&gt;created_at : timestamp&lt;br&gt;updated_at : timestamp" style="shape=rectangle;rounded=0;whiteSpace=wrap;html=1;fillColor=#ffffff;strokeColor=#6c8ebf;fontSize=11;align=left;spacingLeft=10;" vertex="1" parent="1">
+          <mxGeometry x="760" y="2640" width="320" height="238" as="geometry"/>
+        </mxCell>
+        <mxCell id="65" value="&lt;b&gt;usuarios_asistentes&lt;/b&gt;&lt;br&gt;id_asistente : int(11)&lt;br&gt;Nombre_Asistente : varchar(200)&lt;br&gt;Prefijo_CIDNI_id : int(11)&lt;br&gt;Apellidos_Asistente : varchar(200)&lt;br&gt;CIDNI : varchar(20)&lt;br&gt;Sexo_id : int(11)&lt;br&gt;Fecha_Nacimiento_Asistente : date&lt;br&gt;Status_id : int(11)&lt;br&gt;Civil_id : int(11)&lt;br&gt;Pais_id : int(11)" style="shape=rectangle;rounded=0;whiteSpace=wrap;html=1;fillColor=#ffffff;strokeColor=#6c8ebf;fontSize=11;align=left;spacingLeft=10;" vertex="1" parent="1">
+          <mxGeometry x="1120" y="2640" width="320" height="190" as="geometry"/>
+        </mxCell>
+        <mxCell id="66" value="&lt;b&gt;usuarios_general&lt;/b&gt;&lt;br&gt;id : int(11)&lt;br&gt;nombre : varchar(150)&lt;br&gt;id_prefijo_dni : int(11)&lt;br&gt;cedula : int(20)&lt;br&gt;id_sexo : int(11)&lt;br&gt;fecha_nac : date&lt;br&gt;telefono : varchar(20)&lt;br&gt;id_status : int(11)&lt;br&gt;direccion : varchar(250)" style="shape=rectangle;rounded=0;whiteSpace=wrap;html=1;fillColor=#ffffff;strokeColor=#6c8ebf;fontSize=11;align=left;spacingLeft=10;" vertex="1" parent="1">
+          <mxGeometry x="1480" y="2640" width="320" height="174" as="geometry"/>
+        </mxCell>
+        <mxCell id="67" value="&lt;b&gt;usuarios_medicos&lt;/b&gt;&lt;br&gt;id_Medico : int(11)&lt;br&gt;Nombres_Medico : varchar(200)&lt;br&gt;Prefijo_CIDNI_id : int(11)&lt;br&gt;Foto_Medico : varchar(200)&lt;br&gt;Apellidos_Medicos : varchar(200)&lt;br&gt;CIDNI : varchar(20)&lt;br&gt;Fecha_Nacimiento_Medico : date&lt;br&gt;Sexo_id : int(11)&lt;br&gt;Registro_MPPS : varchar(30)&lt;br&gt;Numero_Colegio_de_Medico : varchar(50)&lt;br&gt;Status_Medico_id : int(11)&lt;br&gt;Civil_id : int(11)&lt;br&gt;Pais_id : int(11)&lt;br&gt;id_Estado : int(11)&lt;br&gt;id_Ciudad : int(11)&lt;br&gt;id_Municipio : int(11)&lt;br&gt;id_Parroquia : int(11)" style="shape=rectangle;rounded=0;whiteSpace=wrap;html=1;fillColor=#ffffff;strokeColor=#6c8ebf;fontSize=11;align=left;spacingLeft=10;" vertex="1" parent="1">
+          <mxGeometry x="1840" y="2640" width="320" height="302" as="geometry"/>
+        </mxCell>
+        <mxCell id="68" value="&lt;b&gt;usuarios_pacientes&lt;/b&gt;&lt;br&gt;id_Paciente : int(11)&lt;br&gt;Nombres_Paciente : varchar(200)&lt;br&gt;Apellidos_Paciente : varchar(100)&lt;br&gt;Prefijo_CIDNI_id : int(11)&lt;br&gt;CIDNI : varchar(20)&lt;br&gt;Fecha_Nacimiento_Paciente : date&lt;br&gt;Sexo_id : int(11)&lt;br&gt;Status_id : int(11)&lt;br&gt;Civil_id : int(11)&lt;br&gt;Pais_id : int(11)" style="shape=rectangle;rounded=0;whiteSpace=wrap;html=1;fillColor=#ffffff;strokeColor=#6c8ebf;fontSize=11;align=left;spacingLeft=10;" vertex="1" parent="1">
+          <mxGeometry x="40" y="2900" width="320" height="190" as="geometry"/>
+        </mxCell>
+        <mxCell id="70" value="&lt;b&gt;Leyenda&lt;/b&gt;&lt;br&gt;&lt;font color=&quot;#228B22&quot;&gt;🟩 PK&lt;/font&gt;&lt;br&gt;&lt;font color=&quot;#1E90FF&quot;&gt;🟦 FK&lt;/font&gt;&lt;br&gt;⚪ Campo normal" style="shape=rectangle;whiteSpace=wrap;html=1;fillColor=#f5f5f5;strokeColor=#999;align=left;spacingLeft=8;" vertex="1" parent="1">
+          <mxGeometry x="40" y="3200" width="260" height="110" as="geometry"/>
+        </mxCell>
+      </root>
+    </mxGraphModel>
+  </diagram>
+</mxfile>
