@@ -1,0 +1,96 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Prueba de Estilos Admin - Unidad Médica</title>
+    <link rel="stylesheet" href="/static/css/admin_custom.css">
+    <style>
+        body {
+            font-family: var(--font-primary);
+            background-color: var(--bg-light);
+            color: var(--text-dark);
+            padding: 20px;
+        }
+        .test-module {
+            background: white;
+            border: 1px solid #e1e5e9;
+            border-radius: 6px;
+            margin-bottom: 20px;
+            box-shadow: 0 1px 2px rgba(0, 0, 0, 0.05);
+        }
+        .test-module h2 {
+            background: linear-gradient(135deg, var(--primary), var(--primary-dark));
+            color: white;
+            padding: 10px 15px;
+            margin: 0;
+            font-size: 0.95rem;
+            font-weight: 600;
+        }
+        .test-module > div {
+            padding: 15px;
+        }
+        .test-form {
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+        }
+        .test-input {
+            padding: 0.5rem;
+            border: 1px solid #d1d9e0;
+            border-radius: 6px;
+            font-size: 0.85rem;
+            min-height: 38px;
+        }
+        .test-button {
+            background: var(--primary);
+            color: white;
+            border: none;
+            padding: 0.5rem 1rem;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 0.85rem;
+            min-height: 36px;
+        }
+    </style>
+</head>
+<body>
+    <h1>Prueba de Estilos del Panel de Administración</h1>
+
+    <div class="test-module">
+        <h2>Módulo de Prueba - Estilo Usuario</h2>
+        <div>
+            <p>Este módulo debería tener el mismo estilo que el módulo de usuarios.</p>
+            <form class="test-form">
+                <input type="text" class="test-input" placeholder="Campo de texto de prueba">
+                <input type="email" class="test-input" placeholder="Campo de email de prueba">
+                <button type="submit" class="test-button">Botón de prueba</button>
+            </form>
+        </div>
+    </div>
+
+    <div class="test-module">
+        <h2>Información de Variables CSS</h2>
+        <div>
+            <p><strong>Color primario:</strong> <span style="color: var(--primary)">var(--primary)</span></p>
+            <p><strong>Color de fondo:</strong> <span style="background: var(--bg-light); padding: 2px 4px;">var(--bg-light)</span></p>
+            <p><strong>Fuente principal:</strong> var(--font-primary)</p>
+            <p><strong>Espaciado estándar:</strong> var(--space-md) = <span id="space-value"></span></p>
+        </div>
+    </div>
+
+    <script>
+        // Mostrar valor del espaciado
+        const spaceValue = getComputedStyle(document.documentElement).getPropertyValue('--space-md');
+        document.getElementById('space-value').textContent = spaceValue;
+
+        // Verificar carga del CSS
+        const cssLink = document.querySelector('link[href*="admin_custom.css"]');
+        if (cssLink) {
+            console.log('✓ CSS admin_custom.css cargado correctamente');
+        } else {
+            console.error('✗ CSS admin_custom.css NO encontrado');
+        }
+    </script>
+</body>
+</html>
