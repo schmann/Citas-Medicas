@@ -1,0 +1,291 @@
+/* Estilos generales del panel de administración */
+:root {
+    --primary-color: #3498db;
+    --secondary-color: #2c3e50;
+    --accent-color: #e74c3c;
+    --text-color: #2c3e50;
+    --light-bg: #f8f9fa;
+    --border-color: #e1e4e8;
+    --success-color: #2ecc71;
+    --warning-color: #f39c12;
+    --danger-color: #e74c3c;
+    --sidebar-width: 250px;
+}
+
+/* Estilos para el encabezado */
+#header {
+    background: var(--secondary-color);
+    color: white;
+    padding: 1rem 2rem;
+    box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
+}
+
+#branding h1 {
+    color: white;
+    font-weight: 600;
+}
+
+/* Estilos para la barra lateral */
+#content-related {
+    background: var(--light-bg);
+    border-right: 1px solid var(--border-color);
+    box-shadow: 2px 0 5px rgba(0, 0, 0, 0.05);
+}
+
+/* Estilos para los módulos */
+.module {
+    background: white;
+    border-radius: 8px;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+    margin-bottom: 20px;
+    overflow: hidden;
+}
+
+.module h2, .module caption, .inline-group h2 {
+    background: var(--primary-color);
+    color: white;
+    padding: 12px 15px;
+    margin: 0;
+    font-size: 1em;
+    font-weight: 600;
+}
+
+/* Estilos para las tablas */
+#result_list {
+    width: 100%;
+    border-collapse: collapse;
+}
+
+#result_list th, #result_list td {
+    padding: 12px 15px;
+    border-bottom: 1px solid var(--border-color);
+    text-align: left;
+}
+
+#result_list th {
+    background: var(--light-bg);
+    font-weight: 600;
+    text-transform: uppercase;
+    font-size: 0.8em;
+    letter-spacing: 0.5px;
+}
+
+#result_list tr:hover {
+    background: rgba(52, 152, 219, 0.05);
+}
+
+/* Estilos para los botones */
+.button, input[type="submit"], input[type="button"], .submit-row input {
+    background: var(--primary-color);
+    color: white;
+    border: none;
+    padding: 8px 16px;
+    border-radius: 4px;
+    cursor: pointer;
+    font-size: 0.9em;
+    transition: all 0.2s ease;
+}
+
+.button:hover, input[type="submit"]:hover, input[type="button"]:hover {
+    background: #2980b9;
+    transform: translateY(-1px);
+    box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
+}
+
+/* Estilos para los formularios */
+input[type="text"], input[type="password"], input[type="email"], select, textarea {
+    border: 1px solid var(--border-color);
+    border-radius: 4px;
+    padding: 8px 12px;
+    width: 100%;
+    max-width: 100%;
+    transition: all 0.2s ease;
+}
+
+input[type="text"]:focus, input[type="password"]:focus, 
+input[type="email"]:focus, select:focus, textarea:focus {
+    border-color: var(--primary-color);
+    box-shadow: 0 0 0 2px rgba(52, 152, 219, 0.2);
+    outline: none;
+}
+
+/* Estilos para los mensajes */
+.messagelist li {
+    padding: 12px 15px;
+    margin-bottom: 10px;
+    border-radius: 4px;
+    color: white;
+    font-weight: 500;
+}
+
+.messagelist .success {
+    background: var(--success-color);
+}
+
+.messagelist .warning {
+    background: var(--warning-color);
+}
+
+.messagelist .error {
+    background: var(--danger-color);
+}
+
+/* Estilos para dispositivos móviles */
+@media (max-width: 768px) {
+    #header {
+        padding: 0.5rem 1rem;
+    }
+    
+    #content-related {
+        width: 100%;
+        margin-bottom: 20px;
+    }
+    
+    .module {
+        margin: 10px;
+    }
+    
+    #result_list th, #result_list td {
+        padding: 8px 10px;
+        font-size: 0.9em;
+    }
+    
+    .button, input[type="submit"], input[type="button"] {
+        width: 100%;
+        margin-bottom: 10px;
+    }
+}
+
+/* Estilos para los filtros */
+#changelist-filter {
+    background: white;
+    border-radius: 8px;
+    padding: 15px;
+    margin-bottom: 20px;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+}
+
+#changelist-filter h2 {
+    font-size: 1em;
+    margin: 0 0 15px 0;
+    padding-bottom: 10px;
+    border-bottom: 1px solid var(--border-color);
+    color: var(--secondary-color);
+}
+
+#changelist-filter h3 {
+    font-size: 0.9em;
+    margin: 15px 0 10px 0;
+    color: var(--secondary-color);
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+}
+
+#changelist-filter a {
+    display: block;
+    padding: 8px 12px;
+    color: var(--text-color);
+    text-decoration: none;
+    border-radius: 4px;
+    margin-bottom: 5px;
+    transition: all 0.2s ease;
+}
+
+#changelist-filter a:hover {
+    background: rgba(52, 152, 219, 0.1);
+    color: var(--primary-color);
+    padding-left: 15px;
+}
+
+#changelist-filter .selected a {
+    background: rgba(52, 152, 219, 0.1);
+    color: var(--primary-color);
+    font-weight: 500;
+    border-left: 3px solid var(--primary-color);
+    padding-left: 12px;
+}
+
+/* Mejoras para los selectores */
+.selector {
+    width: 100%;
+}
+
+.selector select {
+    width: 100%;
+    margin-bottom: 5px;
+}
+
+.selector-available, .selector-chosen {
+    width: 48%;
+    float: left;
+    margin-right: 2%;
+}
+
+.selector-choose, .selector-remove, .selector-clearall, .selector-chooser {
+    width: 100%;
+    text-align: center;
+    margin: 5px 0;
+}
+
+/* Mejoras para los campos de fecha/hora */
+.datetime {
+    margin-bottom: 15px;
+}
+
+.datetime input, .datetime select {
+    margin-right: 5px;
+    margin-bottom: 5px;
+}
+
+/* Estilos para los campos requeridos */
+.required label {
+    font-weight: 600;
+}
+
+.required label:after {
+    content: " *";
+    color: var(--danger-color);
+}
+
+/* Mejoras para los mensajes de ayuda */
+.help {
+    color: #666;
+    font-size: 0.9em;
+    margin-top: 5px;
+    display: block;
+}
+
+/* Estilos para los checkboxes y radios */
+input[type="checkbox"], input[type="radio"] {
+    margin-right: 5px;
+}
+
+/* Mejoras para los campos de búsqueda */
+#searchbar {
+    margin-bottom: 20px;
+}
+
+#searchbar input[type="text"] {
+    width: 100%;
+    max-width: 300px;
+    padding: 10px 15px;
+    border-radius: 20px;
+    border: 1px solid var(--border-color);
+}
+
+/* Mejoras para los mensajes de error */
+.errorlist {
+    color: var(--danger-color);
+    margin: 5px 0 10px 0;
+    padding-left: 20px;
+}
+
+.errorlist li {
+    margin-bottom: 5px;
+}
+
+/* Mejoras para los campos con errores */
+.error input, .error select, .error textarea {
+    border-color: var(--danger-color);
+    background-color: #fff9f9;
+}
