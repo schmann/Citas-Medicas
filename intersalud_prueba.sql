@@ -3841,8 +3841,6 @@ CREATE TABLE `tasa_cambio` (
   `id_Tasa_Cambio` int(11) NOT NULL,
   `BS` decimal(10,2) DEFAULT NULL,
   `USD` decimal(10,2) DEFAULT NULL,
-  `BitCoins` varchar(100) COLLATE utf8_unicode_ci DEFAULT NULL,
-  `Ethereum` varchar(100) COLLATE utf8_unicode_ci DEFAULT NULL,
   `Fecha` date DEFAULT NULL,
   `Status_Tasa_id` int(11) DEFAULT NULL
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8 COLLATE=utf8_unicode_ci;
@@ -3851,11 +3849,9 @@ CREATE TABLE `tasa_cambio` (
 -- Volcado de datos para la tabla `tasa_cambio`
 --
 
-INSERT INTO `tasa_cambio` (`id_Tasa_Cambio`, `BS`, `USD`, `BitCoins`, `Ethereum`, `Fecha`, `Status_Tasa_id`) VALUES
-(1, '4.62', '1.00', '0,000336823952', '0,000336823952', '2022-04-27', 2),
-(2, '5.26', '1.00', '0.000078541', '0.000078541', '2022-05-19', 2),
-(3, '5.28', '1.00', '0.000000045213', '0.000000045213', '2022-05-19', 2),
-(4, '5.28', '1.00', '0.000000045213', '0.000000045213', '2022-05-19', 1);
+INSERT INTO `tasa_cambio` (`id_Tasa_Cambio`, `BS`, `USD`,  `Fecha`, `Status_Tasa_id`) VALUES
+(1, '4.62', '1.00', '2022-04-27', 2),
+
 
 -- --------------------------------------------------------
 
