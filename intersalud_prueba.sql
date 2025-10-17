@@ -3972,21 +3972,7 @@ INSERT INTO `usuarios_asistentes` (`id_asistente`, `Nombre_Asistente`, `Prefijo_
 
 -- --------------------------------------------------------
 
---
--- Estructura de tabla para la tabla `usuarios_general`
---
 
-CREATE TABLE `usuarios_general` (
-  `id` int(11) NOT NULL,
-  `nombre` varchar(150) COLLATE utf8_unicode_ci NOT NULL,
-  `id_prefijo_dni` int(11) NOT NULL,
-  `cedula` int(20) NOT NULL,
-  `id_sexo` int(11) NOT NULL,
-  `fecha_nac` date NOT NULL,
-  `telefono` varchar(20) COLLATE utf8_unicode_ci DEFAULT NULL,
-  `id_status` int(11) NOT NULL,
-  `direccion` varchar(250) COLLATE utf8_unicode_ci NOT NULL
-) ENGINE=InnoDB DEFAULT CHARSET=utf8 COLLATE=utf8_unicode_ci;
 
 --
 -- Volcado de datos para la tabla `usuarios_general`
