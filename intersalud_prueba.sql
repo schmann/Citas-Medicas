@@ -746,7 +746,8 @@ INSERT INTO `ciudades` (`id_Ciudad`, `Estado_id`, `Ciudad`, `Capital`) VALUES
 CREATE TABLE `consultorios` (
   `id_Consultorio` int(11) NOT NULL,
   `Direccion` varchar(200) COLLATE utf8_unicode_ci DEFAULT NULL,
-  `Local` varchar(200) COLLATE utf8_unicode_ci DEFAULT NULL,
+-- cambio con respecto a la original para identificar el numero del consultorio
+  `numero_consultorio` varchar(200) COLLATE utf8_unicode_ci DEFAULT NULL, 
   `Telefono` varchar(20) COLLATE utf8_unicode_ci DEFAULT NULL,
   `Celular` varchar(20) COLLATE utf8_unicode_ci DEFAULT NULL,
   `Correo` varchar(200) COLLATE utf8_unicode_ci DEFAULT NULL,
