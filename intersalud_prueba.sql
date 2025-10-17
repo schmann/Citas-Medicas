@@ -24,9 +24,37 @@ SET time_zone = "+00:00";
 -- --------------------------------------------------------
 
 --
--- Estructura de tabla para la tabla `agendas`
+-- Estructura de tabla para la tabla `pago movil`
 --
 
+
+CREATE TABLE pagos_moviles (
+  id_pagos_moviles INT AUTO_INCREMENT PRIMARY KEY,
+  CIDNI VARCHAR(12) NOT NULL,
+  codigo_banco VARCHAR(4) NOT NULL,            -- Código de banco (por ej. 0102 para Banco de Venezuela)
+  telefono VARCHAR(15) NOT NULL,               -- Número de teléfono asociado al pago móvil
+  monto DECIMAL(12,2) NOT NULL,                -- Monto del pago
+  referencia VARCHAR(50) DEFAULT NULL,         -- Referencia opcional del pago o comprobante
+  fecha_pago DATETIME DEFAULT CURRENT_TIMESTAMP, -- Fecha del registro o intento de pago
+
+  estatus ENUM('procesando', 'en_espera', 'validado', 'no_validado', 'error')
+      DEFAULT 'procesando',
+
+  observacion VARCHAR(255) DEFAULT NULL,       -- Campo opcional para anotar detalles o errores
+
+/*  UNIQUE KEY (CIDNI, telefono, monto, fecha_pago) -- evita duplicados exactos en un corto periodo
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+  INSERT INTO pagos_moviles (cedula, codigo_banco, telefono, monto, estatus)
+VALUES ('V12345678', '0102', '04141234567', 250.00, 'procesando');
+
+UPDATE pagos_moviles
+SET estatus = 'validado', observacion = 'Confirmado vía BDV'
+WHERE id = 1;
+
+*/
+--
+-- Estructura de tabla para la tabla `agendas`
 CREATE TABLE `citas_reservadas` (
   `id` INT AUTO_INCREMENT PRIMARY KEY,
   `horario_id` INT NOT NULL,                 -- Enlace con horarios_citas.id
