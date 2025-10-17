@@ -1266,43 +1266,29 @@ CREATE TABLE `historico_pediatria` (
 --
 
 CREATE TABLE `horarios_citas` (
-  `id_Horario_Cita` int(11) NOT NULL,
-  `Medico_id` int(11) NOT NULL,
-  `Especialidad_id` int(11) NOT NULL,
-  `turno_id` int(11) NOT NULL,
-  `Domicilio` int(11) DEFAULT NULL,
-  `Hora_Inicio_Lunes` time DEFAULT NULL,
-  `Hora_Fin_Lunes` time DEFAULT NULL,
-  `Lunes` int(11) DEFAULT NULL,
-  `Hora_Inicio_Martes` time DEFAULT NULL,
-  `Hora_Fin_Martes` time DEFAULT NULL,
-  `Martes` int(11) DEFAULT NULL,
-  `Horario_Inicio_Miercoles` time DEFAULT NULL,
-  `Horario_Fin_Miercoles` time DEFAULT NULL,
-  `Miercoles` int(11) DEFAULT NULL,
-  `Horario_Inicio_Jueves` time DEFAULT NULL,
-  `Horario_Fin_Jueves` time DEFAULT NULL,
-  `Jueves` int(11) DEFAULT NULL,
-  `Horario_Inicio_Viernes` time DEFAULT NULL,
-  `Horario_Fin_Viernes` time DEFAULT NULL,
-  `Viernes` int(11) DEFAULT NULL,
-  `Horario_Inicio_Sabado` time DEFAULT NULL,
-  `Horario_Fin_Sabado` time DEFAULT NULL,
-  `Sabado` int(11) DEFAULT NULL,
-  `Horario_inicio_Domingo` time DEFAULT NULL,
-  `Horario_Fin_Domingo` time DEFAULT NULL,
-  `Domingo` int(11) DEFAULT NULL
-) ENGINE=InnoDB DEFAULT CHARSET=utf8 COLLATE=utf8_unicode_ci;
+  `id` INT AUTO_INCREMENT PRIMARY KEY,
+  `medico_id` INT NOT NULL,
+  `especialidad_id` INT NOT NULL,
+  `turno_id` INT NOT NULL,
+  `domicilio` BOOLEAN DEFAULT FALSE,
+  `calendar_event_id` VARCHAR(128) DEFAULT NULL,
+  `calendar_id` VARCHAR(128) DEFAULT NULL,
+  `start_datetime` DATETIME NOT NULL,
+  `end_datetime` DATETIME NOT NULL,
+  `recurrence_rule` VARCHAR(255) DEFAULT NULL,
+  `activo` BOOLEAN DEFAULT TRUE,
+  FOREIGN KEY (`medico_id`) REFERENCES `medicos`(`id_Medico`),
+  FOREIGN KEY (`especialidad_id`) REFERENCES `especialidades`(`id_Especialidad`),
+  FOREIGN KEY (`turno_id`) REFERENCES `turnos`(`id_Turno`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 
---
--- Volcado de datos para la tabla `horarios_citas`
---
 
-INSERT INTO `horarios_citas` (`id_Horario_Cita`, `Medico_id`, `Especialidad_id`, `turno_id`, `Domicilio`, `Hora_Inicio_Lunes`, `Hora_Fin_Lunes`, `Lunes`, `Hora_Inicio_Martes`, `Hora_Fin_Martes`, `Martes`, `Horario_Inicio_Miercoles`, `Horario_Fin_Miercoles`, `Miercoles`, `Horario_Inicio_Jueves`, `Horario_Fin_Jueves`, `Jueves`, `Horario_Inicio_Viernes`, `Horario_Fin_Viernes`, `Viernes`, `Horario_Inicio_Sabado`, `Horario_Fin_Sabado`, `Sabado`, `Horario_inicio_Domingo`, `Horario_Fin_Domingo`, `Domingo`) VALUES
-(1, 1, 1, 2, 0, '12:05:00', '21:00:00', 1, NULL, NULL, 0, '12:05:00', '20:00:00', 1, '12:05:00', '20:00:00', 1, NULL, NULL, 0, NULL, NULL, 0, NULL, NULL, 0),
-(2, 1, 1, 1, 0, '07:00:00', '11:59:00', 1, '07:00:00', '11:59:00', 1, NULL, NULL, 0, NULL, NULL, 0, NULL, NULL, 0, NULL, NULL, 0, NULL, NULL, 0),
-(3, 3, 2, 2, 0, NULL, NULL, 0, NULL, NULL, 0, NULL, NULL, 0, NULL, NULL, 0, '12:05:00', '20:00:00', 1, NULL, NULL, 0, NULL, NULL, 0);
-
+/* -- Lunes 8:00 a 12:00
+INSERT INTO horarios_citas 
+(medico_id, especialidad_id, turno_id, start_datetime, end_datetime, recurrence_rule)
+VALUES
+(1, 2, 1, '2025-01-06 08:00:00', '2025-01-06 12:00:00', 'RRULE:FREQ=WEEKLY;BYDAY=MO;UNTIL=20251231T235959Z');
+*/
 -- --------------------------------------------------------
 
 --
