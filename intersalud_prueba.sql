@@ -27,27 +27,28 @@ SET time_zone = "+00:00";
 -- Estructura de tabla para la tabla `agendas`
 --
 
-CREATE TABLE `agendas` (
-  `id_Agenda` int(11) NOT NULL,
-  `Medico_id` int(11) DEFAULT NULL,
-  `Consultorio_id` int(11) DEFAULT NULL,
-  `Especialidad_Medica` int(11) DEFAULT NULL,
-  `Horario_Cita_id` int(11) DEFAULT NULL,
-  `Domicilio_id` int(11) DEFAULT NULL,
-  `Max_pacientes` int(11) DEFAULT NULL,
-  `Status_id` int(11) DEFAULT NULL,
-  `Status_Medico_id` int(11) DEFAULT NULL,
-  `Nota` varchar(200) COLLATE utf8_unicode_ci DEFAULT NULL
-) ENGINE=InnoDB DEFAULT CHARSET=utf8 COLLATE=utf8_unicode_ci;
-
+CREATE TABLE `citas_reservadas` (
+  `id` INT AUTO_INCREMENT PRIMARY KEY,
+  `horario_id` INT NOT NULL,                 -- Enlace con horarios_citas.id
+  `paciente_id` INT NOT NULL,                -- Paciente que reserva la cita
+  `calendar_event_id` VARCHAR(128) DEFAULT NULL,  -- ID del evento individual en Google Calendar
+  `start_datetime` DATETIME NOT NULL,        -- Hora real de la cita
+  `end_datetime` DATETIME NOT NULL,          -- Hora real de fin
+  `estado` ENUM('pendiente', 'confirmada', 'cancelada', 'atendida') DEFAULT 'pendiente',
+  `nota` VARCHAR(255) DEFAULT NULL,          -- Comentarios del médico o asistente
+  `costo` DECIMAL(10,2) DEFAULT NULL,        -- Monto de la consulta
+  `created_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  FOREIGN KEY (`horario_id`) REFERENCES `horarios_citas`(`id`) ON DELETE CASCADE,
+  FOREIGN KEY (`paciente_id`) REFERENCES `pacientes`(`id_Paciente`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+/*INSERT INTO citas_reservadas 
+(horario_id, paciente_id, start_datetime, end_datetime, estado, nota, costo)
+VALUES
+(10, 45, '2025-01-13 09:00:00', '2025-01-13 09:30:00', 'confirmada', 'Dolor de espalda leve', 25.00);
+*/
 --
 -- Volcado de datos para la tabla `agendas`
 --
-
-INSERT INTO `agendas` (`id_Agenda`, `Medico_id`, `Consultorio_id`, `Especialidad_Medica`, `Horario_Cita_id`, `Domicilio_id`, `Max_pacientes`, `Status_id`, `Status_Medico_id`, `Nota`) VALUES
-(1, 1, 1, 1, 1, NULL, 10, 1, NULL, 'Asistir a la consulta acompañado'),
-(2, 1, 1, 1, 2, NULL, 20, 1, NULL, 'beber 2 litros de agua si viene por eco'),
-(3, 3, 2, 2, 3, NULL, 10, 1, NULL, 'llegar a la consulta acompañado');
 
 -- --------------------------------------------------------
 
