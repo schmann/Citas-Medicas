@@ -1,0 +1,45 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block content %}
+<div class="container mt-4">
+    <h2>Listado de Especialidades Médicas</h2>
+    <a href="{% url 'crear_especialidad' %}" class="btn btn-primary mb-3">
+        <i class="fas fa-plus"></i> Nueva Especialidad
+    </a>
+    
+    <div class="table-responsive">
+        <table class="table table-striped">
+            <thead>
+                <tr>
+                    <th>ID</th>
+                    <th>Nombre</th>
+                    <th>Acciones</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for especialidad in especialidades %}
+                <tr>
+                    <td>{{ especialidad.id_Especialidad_Medica }}</td>
+                    <td>{{ especialidad.Espacialidad_Medica }}</td>
+                    <td>
+                        <a href="{% url 'editar_especialidad' especialidad.id_Especialidad_Medica %}" 
+                           class="btn btn-sm btn-warning">
+                            <i class="fas fa-edit"></i> Editar
+                        </a>
+                        <a href="{% url 'eliminar_especialidad' especialidad.id_Especialidad_Medica %}" 
+                           class="btn btn-sm btn-danger">
+                            <i class="fas fa-trash"></i> Eliminar
+                        </a>
+                    </td>
+                </tr>
+                {% empty %}
+                <tr>
+                    <td colspan="3" class="text-center">No hay especialidades registradas.</td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+{% endblock %}

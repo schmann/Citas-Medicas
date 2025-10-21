@@ -1,0 +1,61 @@
+{% extends 'base.html' %}
+
+{% block title %}Eliminar Consultorio{% endblock %}
+
+{% block content %}
+<div class="row justify-content-center">
+    <div class="col-md-8">
+        <div class="card">
+            <div class="card-header bg-danger text-white">
+                <h3 class="card-title">
+                    <i class="fas fa-exclamation-triangle"></i> Confirmar Eliminación
+                </h3>
+            </div>
+            <div class="card-body">
+                <p class="lead">
+                    ¿Estás seguro de que deseas eliminar el siguiente consultorio?
+                </p>
+                
+                <div class="alert alert-warning">
+                    <h5><i class="icon fas fa-info-circle"></i> Consultorio a eliminar:</h5>
+                    <ul class="mb-0">
+                        <li><strong>N° de Consultorio:</strong> {{ consultorio.numero_consultorio }}</li>
+                        <li><strong>Dirección:</strong> {{ consultorio.Direccion|truncatechars:50 }}</li>
+                        <li><strong>Especialidad:</strong> {{ consultorio.Especialidad_Medica.nombre|default:"No especificada" }}</li>
+                    </ul>
+                </div>
+
+                <div class="alert alert-danger">
+                    <h5><i class="icon fas fa-exclamation-triangle"></i> ¡Advertencia!</h5>
+                    <p class="mb-0">
+                        Esta acción no se puede deshacer. Todos los datos asociados a este consultorio serán eliminados permanentemente.
+                    </p>
+                </div>
+            </div>
+            <div class="card-footer">
+                <form method="post" class="d-inline">
+                    {% csrf_token %}
+                    <button type="submit" class="btn btn-danger">
+                        <i class="fas fa-trash-alt"></i> Sí, eliminar
+                    </button>
+                </form>
+                <a href="{% url 'citas:consultorios' %}" class="btn btn-secondary float-right">
+                    <i class="fas fa-times"></i> Cancelar
+                </a>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block javascript %}
+<script>
+    // Deshabilitar el envío múltiple del formulario
+    $(document).ready(function() {
+        $('form').on('submit', function() {
+            $(this).find('button[type="submit"]').prop('disabled', true);
+            $('.btn-danger').html('<i class="fas fa-spinner fa-spin"></i> Eliminando...');
+        });
+    });
+</script>
+{% endblock %}

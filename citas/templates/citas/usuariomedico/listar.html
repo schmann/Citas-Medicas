@@ -1,0 +1,104 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block title %}Lista de Médicos{% endblock %}
+
+{% block content %}
+<div class="card">
+    <div class="card-header">
+        <h3 class="card-title">Lista de Médicos</h3>
+        <div class="card-tools">
+            <a href="{% url 'citas:crear_medico' %}" class="btn btn-primary btn-sm">
+                <i class="fas fa-plus"></i> Nuevo Médico
+            </a>
+        </div>
+    </div>
+    <div class="card-body">
+        <div class="table-responsive">
+            <table class="table table-bordered table-striped">
+                <thead>
+                    <tr>
+                        <th>ID</th>
+                        <th>Nombres</th>
+                        <th>Apellidos</th>
+                        <th>Cédula</th>
+                        <th>Registro MPPS</th>
+                        <th>Estado</th>
+                        <th>Acciones</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for medico in medicos %}
+                    <tr>
+                        <td>{{ medico.id_Medico }}</td>
+                        <td>{{ medico.Nombres_Medico }}</td>
+                        <td>{{ medico.Apellidos_Medicos }}</td>
+                        <td>{{ medico.Prefijo_CIDNI }}-{{ medico.CIDNI }}</td>
+                        <td>{{ medico.Registro_MPPS|default:"-" }}</td>
+                        <td>
+                            <span class="badge {% if medico.activo %}bg-success{% else %}bg-danger{% endif %}">
+                                {% if medico.activo %}Activo{% else %}Inactivo{% endif %}
+                            </span>
+                        </td>
+                        <td>
+                            <a href="{% url 'citas:editar_medico' medico.id_Medico %}" class="btn btn-sm btn-warning">
+                                <i class="fas fa-edit"></i>
+                            </a>
+                            <button class="btn btn-sm btn-danger" onclick="confirmarEliminar({{ medico.id_Medico }})">
+                                <i class="fas fa-trash"></i>
+                            </button>
+                        </td>
+                    </tr>
+                    {% empty %}
+                    <tr>
+                        <td colspan="7" class="text-center">No hay médicos registrados</td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+
+<!-- Modal de confirmación para eliminar -->
+<div class="modal fade" id="modalEliminar" tabindex="-1" role="dialog" aria-hidden="true">
+    <div class="modal-dialog" role="document">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Confirmar Eliminación</h5>
+                <button type="button" class="close" data-dismiss="modal" aria-label="Cerrar">
+                    <span aria-hidden="true">&times;</span>
+                </button>
+            </div>
+            <div class="modal-body">
+                ¿Está seguro que desea eliminar este médico? Esta acción no se puede deshacer.
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-dismiss="modal">Cancelar</button>
+                <a href="#" id="btnEliminar" class="btn btn-danger">Eliminar</a>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block javascript %}
+<script>
+function confirmarEliminar(id) {
+    var url = "{% url 'citas:eliminar_medico' 0 %}".replace('0', id);
+    document.getElementById('btnEliminar').setAttribute('href', url);
+    $('#modalEliminar').modal('show');
+}
+
+// Inicializar DataTables
+$(document).ready(function() {
+    $('.table').DataTable({
+        "language": {
+            "url": "//cdn.datatables.net/plug-ins/1.10.25/i18n/Spanish.json"
+        },
+        "responsive": true,
+        "autoWidth": false,
+    });
+});
+</script>
+{% endblock %}

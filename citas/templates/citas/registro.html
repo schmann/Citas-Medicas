@@ -1,0 +1,217 @@
+{% extends "web/base.html" %}
+{% load static %}
+
+{% block title %}{{ titulo }}{% endblock %}
+
+{% block content %}
+<section class="section-form">
+    <div class="form-container">
+        <h2>{{ titulo }}</h2>
+        <p>Por favor, ingrese sus datos personales para completar su registro.</p>
+
+        <form method="post" class="styled-form" id="form-paciente">
+            {% csrf_token %}
+
+            <div class="form-group-grid">
+                <!-- Campos personales -->
+                {% for field in form %}
+                    {% if field.name not in 'separador_datos,celular,correo,telefono,direccion,estado,ciudad,municipio,parroquia' %}
+                        <div class="field-wrapper">
+                            {{ field.label_tag }}
+                            {{ field }}
+                            {% if field.errors %}<div class="error-message">{{ field.errors }}</div>{% endif %}
+                        </div>
+                    {% endif %}
+                {% endfor %}
+            </div>
+
+            <div class="form-separator">
+                <h5 class="card-title">Dirección de Residencia</h5>
+            </div>
+
+            <div class="form-group-grid">
+                <!-- Campos de contacto -->
+                <div class="field-wrapper">
+                    {{ form.telefono.label_tag }}
+                    {{ form.telefono }}
+                    {% if form.telefono.errors %}<div class="error-message">{{ form.telefono.errors }}</div>{% endif %}
+                </div>
+                <div class="field-wrapper">
+                    {{ form.celular.label_tag }}
+                    {{ form.celular }}
+                    {% if form.celular.errors %}<div class="error-message">{{ form.celular.errors }}</div>{% endif %}
+                </div>
+                <div class="field-wrapper full-width">
+                    {{ form.correo.label_tag }}
+                    {{ form.correo }}
+                    {% if form.correo.errors %}<div class="error-message">{{ form.correo.errors }}</div>{% endif %}
+                </div>
+
+                <!-- Ubicación -->
+                <div class="field-wrapper">
+                    {{ form.estado.label_tag }}
+                    {{ form.estado }}
+                </div>
+                <div class="field-wrapper">
+                    {{ form.ciudad.label_tag }}
+                    {{ form.ciudad }}
+                </div>
+                <div class="field-wrapper">
+                    {{ form.municipio.label_tag }}
+                    {{ form.municipio }}
+                </div>
+                <div class="field-wrapper">
+                    {{ form.parroquia.label_tag }}
+                    {{ form.parroquia }}
+                </div>
+
+                <!-- Dirección -->
+                <div class="field-wrapper full-width">
+                    {{ form.direccion.label_tag }}
+                    {{ form.direccion }}
+                    {% if form.direccion.errors %}<div class="error-message">{{ form.direccion.errors }}</div>{% endif %}
+                </div>
+            </div>
+
+            <button type="submit" class="submit-button">Registrarse</button>
+        </form>
+    </div>
+</section>
+
+<!-- Incluir jQuery -->
+
+<script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+<script src="https://unpkg.com/htmx.org@1.9.4"></script>
+<!-- Script para combos dependientes -->
+<script>
+$(document).ready(function() {
+    function loadDependentCombo(parentId, level, $targetCombo, $nextCombo) {
+        if (!parentId) {
+            $targetCombo.empty().append('<option value="">Seleccione una opción</option>').prop('disabled', true);
+            if ($nextCombo) {
+                $nextCombo.empty().prop('disabled', true);
+            }
+            return;
+        }
+
+        $targetCombo.prop('disabled', true).empty().append('<option value="">Cargando...</option>');
+        
+        // Construir la URL correcta
+       let url = `{% url 'citas:cargar_ubicaciones' %}?level=${level}&parent_id=${parentId}`;
+        
+        $.ajax({
+            url: url,
+            type: 'GET',
+            dataType: 'json',
+            success: function(data) {
+                $targetCombo.empty().append('<option value="">Seleccione una opción</option>');
+                
+                if (data && data.length > 0) {
+                    $.each(data, function(key, value) {
+                        $targetCombo.append($('<option>', {
+                            value: value.id,
+                            text: value.nombre
+                        }));
+                    });
+                    $targetCombo.prop('disabled', false);
+                } else {
+                    $targetCombo.append('<option value="">No hay opciones disponibles</option>');
+                }
+                
+                // Limpiar combos siguientes
+                if ($nextCombo) {
+                    $nextCombo.empty().prop('disabled', true);
+                }
+            },
+            error: function(xhr, status, error) {
+                console.error("Error al cargar datos: ", error);
+                $targetCombo.empty().append('<option value="">Error al cargar</option>');
+            }
+        });
+    }
+
+    // Eventos para los combos
+    $("#id_estado").change(function() {
+        loadDependentCombo($(this).val(), 'ciudades', $("#id_ciudad"), $("#id_municipio"));
+    });
+
+    $("#id_ciudad").change(function() {
+        // Si necesitas filtrar municipios por ciudad, cambia 'estados' por 'ciudades' y ajusta el parentId
+        loadDependentCombo($("#id_estado").val(), 'municipios', $("#id_municipio"), $("#id_parroquia"));
+    });
+
+   $("#id_municipio").change(function() {
+        loadDependentCombo(
+            $(this).val(),  // ID del municipio seleccionado
+            'parroquias',   // Nivel a cargar
+            $("#id_parroquia"),  // Combo objetivo
+            null  // No hay siguiente combo
+        );
+    });
+});
+</script>
+
+<style>
+    .section-form {
+        padding: 40px 20px;
+        background-color: #f8f9fa;
+    }
+    .form-container {
+        max-width: 900px;
+        margin: 0 auto;
+        background-color: white;
+        padding: 30px;
+        border-radius: 8px;
+        box-shadow: 0 0 10px rgba(0,0,0,0.1);
+    }
+    .form-group-grid {
+        display: grid;
+        grid-template-columns: repeat(2, 1fr);
+        gap: 15px;
+        margin-bottom: 20px;
+    }
+    .field-wrapper {
+        margin-bottom: 15px;
+    }
+    .field-wrapper.full-width {
+        grid-column: 1 / -1;
+    }
+    .form-separator {
+        border-top: 2px solid #e9ecef;
+        margin: 25px 0;
+        padding-top: 15px;
+    }
+    .form-separator h3 {
+        margin: 0 0 15px 0;
+        color: #495057;
+    }
+    .submit-button {
+        background-color: #007bff;
+        color: white;
+        padding: 10px 20px;
+        border: none;
+        border-radius: 4px;
+        cursor: pointer;
+        font-size: 16px;
+        width: 100%;
+    }
+    .submit-button:hover {
+        background-color: #0056b3;
+    }
+    .error-message {
+        color: #dc3545;
+        font-size: 0.875em;
+        margin-top: 5px;
+    }
+    select, input, textarea {
+        width: 100%;
+        padding: 8px 12px;
+        border: 1px solid #ced4da;
+        border-radius: 4px;
+        box-sizing: border-box;
+    }
+    textarea {
+        min-height: 100px;
+    }
+</style>
+{% endblock %}

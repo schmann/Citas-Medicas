@@ -1,0 +1,19 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block content %}
+<div class="container mt-4">
+    <h2>Eliminar Especialidad</h2>
+    <p>¿Estás seguro de que deseas eliminar la especialidad "{{ especialidad.Espacialidad_Medica }}"?</p>
+    
+    <form method="post">
+        {% csrf_token %}
+        <button type="submit" class="btn btn-danger">
+            <i class="fas fa-trash"></i> Sí, eliminar
+        </button>
+        <a href="{% url 'listar_especialidades' %}" class="btn btn-secondary">
+            <i class="fas fa-times"></i> Cancelar
+        </a>
+    </form>
+</div>
+{% endblock %}

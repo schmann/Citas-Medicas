@@ -1,0 +1,115 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block title %}Detalles del Consultorio{% endblock %}
+
+{% block content %}
+<div class="card">
+    <div class="card-header">
+        <div class="d-flex justify-content-between align-items-center">
+            <h3 class="card-title">Detalles del Consultorio</h3>
+            <div class="btn-group">
+                <a href="{% url 'citas:consultorio_update' consultorio.pk %}" class="btn btn-warning">
+                    <i class="fas fa-edit"></i> Editar
+                </a>
+                <a href="{% url 'citas:consultorios' %}" class="btn btn-secondary">
+                    <i class="fas fa-arrow-left"></i> Volver
+                </a>
+            </div>
+        </div>
+    </div>
+    <div class="card-body">
+        <div class="row">
+            <div class="col-md-6">
+                <h4>Información Básica</h4>
+                <table class="table table-bordered">
+                    <tr>
+                        <th style="width: 40%;">N° de Consultorio:</th>
+                        <td>{{ consultorio.numero_consultorio }}</td>
+                    </tr>
+                    <tr>
+                        <th>Especialidad:</th>
+                        <td>{{ consultorio.Especialidad_Medica.nombre|default:"No especificada" }}</td>
+                    </tr>
+                    <tr>
+                        <th>Estado:</th>
+                        <td>
+                            <span class="badge {% if consultorio.Status %}bg-success{% else %}bg-danger{% endif %}">
+                                {% if consultorio.Status %}Activo{% else %}Inactivo{% endif %}
+                            </span>
+                        </td>
+                    </tr>
+                </table>
+                
+                <h4 class="mt-4">Contacto</h4>
+                <table class="table table-bordered">
+                    <tr>
+                        <th style="width: 40%;">Teléfono:</th>
+                        <td>{{ consultorio.Telefono|default:"No especificado" }}</td>
+                    </tr>
+                    <tr>
+                        <th>Celular:</th>
+                        <td>{{ consultorio.Celular|default:"No especificado" }}</td>
+                    </tr>
+                    <tr>
+                        <th>Correo:</th>
+                        <td>{{ consultorio.Correo|default:"No especificado"|urlize }}</td>
+                    </tr>
+                </table>
+            </div>
+            
+            <div class="col-md-6">
+                <h4>Ubicación</h4>
+                <table class="table table-bordered">
+                    <tr>
+                        <th style="width: 40%;">Dirección:</th>
+                        <td>{{ consultorio.Direccion|linebreaksbr|default:"No especificada" }}</td>
+                    </tr>
+                    <tr>
+                        <th>Estado:</th>
+                        <td>{{ consultorio.estado.nombre|default:"No especificado" }}</td>
+                    </tr>
+                    <tr>
+                        <th>Ciudad:</th>
+                        <td>{{ consultorio.ciudad.nombre|default:"No especificada" }}</td>
+                    </tr>
+                    <tr>
+                        <th>Municipio:</th>
+                        <td>{{ consultorio.municipio.nombre|default:"No especificado" }}</td>
+                    </tr>
+                    <tr>
+                        <th>Parroquia:</th>
+                        <td>{{ consultorio.parroquia.nombre|default:"No especificada" }}</td>
+                    </tr>
+                </table>
+                
+                <h4 class="mt-4">Información Adicional</h4>
+                <table class="table table-bordered">
+                    <tr>
+                        <th style="width: 40%;">Creado:</th>
+                        <td>{{ consultorio.created_at|date:"d/m/Y H:i"|default:"No disponible" }}</td>
+                    </tr>
+                    <tr>
+                        <th>Última actualización:</th>
+                        <td>{{ consultorio.updated_at|date:"d/m/Y H:i"|default:"No disponible" }}</td>
+                    </tr>
+                </table>
+            </div>
+        </div>
+    </div>
+    <div class="card-footer">
+        <a href="{% url 'citas:consultorios' %}" class="btn btn-secondary">
+            <i class="fas fa-arrow-left"></i> Volver a la lista
+        </a>
+    </div>
+</div>
+{% endblock %}
+
+{% block javascript %}
+<script>
+    $(document).ready(function() {
+        // Inicializar tooltips
+        $('[data-toggle="tooltip"]').tooltip();
+    });
+</script>
+{% endblock %}

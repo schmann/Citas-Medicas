@@ -1,0 +1,80 @@
+{% extends "admin/base_site.html" %}
+{% load static %}
+
+{% block content_title %}<h1>Gestión de Especialidades de Médicos</h1>{% endblock %}
+
+{% block content %}
+<div class="card">
+    <div class="card-header">
+        <h3 class="card-title">Listado de Especialidades de Médicos</h3>
+        <div class="card-tools">
+            <a href="{% url 'citas:medico_especialidad_create' %}" class="btn btn-primary">
+                <i class="fas fa-plus"></i> Nueva Especialidad de Médico
+            </a>
+        </div>
+    </div>
+    <div class="card-body">
+        <table class="table table-bordered table-striped">
+            <thead>
+                <tr>
+                    <th>Médico</th>
+                    <th>Especialidad</th>
+                    <th>Principal</th>
+                    <th>Activo</th>
+                    <th>Acciones</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for especialidad_medico in especialidades_medicos %}
+                <tr>
+                    <td>{{ especialidad_medico.medico }}</td>
+                    <td>{{ especialidad_medico.especialidad }}</td>
+                    <td>
+                        {% if especialidad_medico.principal %}
+                            <span class="badge bg-success">Sí</span>
+                        {% else %}
+                            <span class="badge bg-secondary">No</span>
+                        {% endif %}
+                    </td>
+                    <td>
+                        {% if especialidad_medico.activo %}
+                            <span class="badge bg-success">Activo</span>
+                        {% else %}
+                            <span class="badge bg-danger">Inactivo</span>
+                        {% endif %}
+                    </td>
+                    <td>
+                        <a href="{% url 'citas:medico_especialidad_update' especialidad_medico.pk %}" 
+                           class="btn btn-sm btn-warning" title="Editar">
+                            <i class="fas fa-edit"></i>
+                        </a>
+                        <a href="{% url 'citas:medico_especialidad_delete' especialidad_medico.pk %}" 
+                           class="btn btn-sm btn-danger" title="Eliminar">
+                            <i class="fas fa-trash"></i>
+                        </a>
+                    </td>
+                </tr>
+                {% empty %}
+                <tr>
+                    <td colspan="5" class="text-center">No hay especialidades de médicos registradas.</td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+{% endblock %}
+
+{% block extrajs %}
+<!-- Incluir Select2 para mejor experiencia de usuario -->
+<link href="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/css/select2.min.css" rel="stylesheet" />
+<script src="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/js/select2.min.js"></script>
+<script>
+$(document).ready(function() {
+    $('.select2').select2({
+        theme: 'bootstrap4',
+        width: '100%'
+    });
+});
+</script>
+{% endblock %}

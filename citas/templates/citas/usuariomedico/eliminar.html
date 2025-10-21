@@ -1,0 +1,29 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block title %}Eliminar Médico{% endblock %}
+
+{% block content %}
+<div class="card">
+    <div class="card-header bg-danger text-white">
+        <h3 class="card-title">Confirmar Eliminación</h3>
+    </div>
+    <div class="card-body">
+        <p>¿Está seguro que desea eliminar al siguiente médico?</p>
+        <p><strong>Nombre:</strong> {{ object.Nombres_Medico }} {{ object.Apellidos_Medicos }}</p>
+        <p><strong>Cédula:</strong> {{ object.Prefijo_CIDNI }}-{{ object.CIDNI }}</p>
+        <p class="text-danger"><strong>¡Advertencia!</strong> Esta acción no se puede deshacer.</p>
+    </div>
+    <div class="card-footer">
+        <form method="post">
+            {% csrf_token %}
+            <button type="submit" class="btn btn-danger">
+                <i class="fas fa-trash"></i> Confirmar Eliminación
+            </button>
+            <a href="{% url 'citas:listar_medicos' %}" class="btn btn-secondary">
+                <i class="fas fa-times"></i> Cancelar
+            </a>
+        </form>
+    </div>
+</div>
+{% endblock %}

@@ -1,0 +1,366 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block title %}{{ titulo }}{% endblock %}
+
+{% block content %}
+<div class="card">
+    <div class="card-header">
+        <h3 class="card-title">{{ titulo }}</h3>
+    </div>
+    <form method="post" enctype="multipart/form-data">
+        <div class="card-body">
+            {% csrf_token %}
+            
+            <div class="row">
+                <div class="col-md-6">
+                    <div class="form-group">
+                        <label for="{{ form.numero_consultorio.id_for_label }}">
+                            {{ form.numero_consultorio.label }}
+                            {% if form.numero_consultorio.field.required %}<span class="text-danger">*</span>{% endif %}
+                        </label>
+                        {{ form.numero_consultorio }}
+                        {% if form.numero_consultorio.errors %}
+                            <div class="invalid-feedback d-block">
+                                {{ form.numero_consultorio.errors|join:", " }}
+                            </div>
+                        {% endif %}
+                    </div>
+                </div>
+                
+                <div class="col-md-6">
+                    <div class="form-group">
+                        <label for="{{ form.Especialidad_Medica.id_for_label }}">
+                            {{ form.Especialidad_Medica.label }}
+                            {% if form.Especialidad_Medica.field.required %}<span class="text-danger">*</span>{% endif %}
+                        </label>
+                        {{ form.Especialidad_Medica }}
+                        {% if form.Especialidad_Medica.errors %}
+                            <div class="invalid-feedback d-block">
+                                {{ form.Especialidad_Medica.errors|join:", " }}
+                            </div>
+                        {% endif %}
+                    </div>
+                </div>
+            </div>
+
+            <div class="form-group">
+                <label for="{{ form.Direccion.id_for_label }}">
+                    {{ form.Direccion.label }}
+                    {% if form.Direccion.field.required %}<span class="text-danger">*</span>{% endif %}
+                </label>
+                {{ form.Direccion }}
+                {% if form.Direccion.errors %}
+                    <div class="invalid-feedback d-block">
+                        {{ form.Direccion.errors|join:", " }}
+                    </div>
+                {% endif %}
+            </div>
+
+            <div class="row">
+                <div class="col-md-4">
+                    <div class="form-group">
+                        <label for="{{ form.Telefono.id_for_label }}">
+                            {{ form.Telefono.label }}
+                        </label>
+                        {{ form.Telefono }}
+                        {% if form.Telefono.errors %}
+                            <div class="invalid-feedback d-block">
+                                {{ form.Telefono.errors|join:", " }}
+                            </div>
+                        {% endif %}
+                    </div>
+                </div>
+                
+                <div class="col-md-4">
+                    <div class="form-group">
+                        <label for="{{ form.Celular.id_for_label }}">
+                            {{ form.Celular.label }}
+                        </label>
+                        {{ form.Celular }}
+                        {% if form.Celular.errors %}
+                            <div class="invalid-feedback d-block">
+                                {{ form.Celular.errors|join:", " }}
+                            </div>
+                        {% endif %}
+                    </div>
+                </div>
+                
+                <div class="col-md-4">
+                    <div class="form-group">
+                        <label for="{{ form.Correo.id_for_label }}">
+                            {{ form.Correo.label }}
+                        </label>
+                        {{ form.Correo }}
+                        {% if form.Correo.errors %}
+                            <div class="invalid-feedback d-block">
+                                {{ form.Correo.errors|join:", " }}
+                            </div>
+                        {% endif %}
+                    </div>
+                </div>
+            </div>
+
+            <h5 class="mt-4 mb-3">Ubicación Geográfica</h5>
+            
+            <div class="row">
+                <div class="col-md-6">
+                    <div class="form-group">
+                        <label for="{{ form.estado.id_for_label }}">Estado/Provincia</label>
+                        {{ form.estado }}
+                    </div>
+                </div>
+                
+                <div class="col-md-6">
+                    <div class="form-group">
+                        <label for="{{ form.ciudad.id_for_label }}">Ciudad</label>
+                        {{ form.ciudad }}
+                    </div>
+                </div>
+            </div>
+
+            <div class="row">
+                <div class="col-md-6">
+                    <div class="form-group">
+                        <label for="{{ form.municipio.id_for_label }}">Municipio</label>
+                        {{ form.municipio }}
+                    </div>
+                </div>
+                
+                <div class="col-md-6">
+                    <div class="form-group">
+                        <label for="{{ form.parroquia.id_for_label }}">Parroquia</label>
+                        {{ form.parroquia }}
+                    </div>
+                </div>
+            </div>
+
+            <div class="form-group mt-4">
+                <div class="custom-control custom-switch">
+                    {{ form.Status }}
+                    <label class="custom-control-label" for="{{ form.Status.id_for_label }}">
+                        {{ form.Status.label }}
+                    </label>
+                </div>
+            </div>
+        </div>
+        
+        <div class="card-footer">
+            <div class="float-right">
+                <a href="{% url 'citas:consultorios' %}" class="btn btn-secondary">
+                    <i class="fas fa-times"></i> Cancelar
+                </a>
+                <button type="submit" class="btn btn-primary">
+                    <i class="fas fa-save"></i> Guardar
+                </button>
+            </div>
+        </div>
+    </form>
+</div>
+{% endblock %}
+
+{% block javascript %}
+{{ block.super }}
+<script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/js/select2.min.js"></script>
+<script>
+// URLs para las peticiones AJAX
+const URLS = {
+    load_estados: '{% url "citas:ajax_load_estados" %}',
+    load_ciudades: '{% url "citas:ajax_load_ciudades" %}',
+    load_municipios: '{% url "citas:ajax_load_municipios" %}',
+    load_parroquias: '{% url "citas:ajax_load_parroquias" %}',
+};
+
+// Función para cargar datos dependientes
+function cargarDependientes(url, params, targetSelector) {
+    const $target = $(targetSelector);
+    
+    // Mostrar indicador de carga
+    $target.html('<option value="">Cargando...</option>').prop('disabled', true);
+    
+    console.log('Solicitando datos a:', url);
+    console.log('Parámetros:', params);
+    
+    // Realizar petición AJAX
+    return $.ajax({
+        url: url,
+        data: params,
+        dataType: 'json',  // Asegurarse de que la respuesta se interprete como JSON
+        success: function(data) {
+            console.log('Respuesta recibida:', data);
+            let options = '<option value="">Seleccione una opción</option>';
+            
+            if (data && data.length > 0) {
+                data.forEach(function(item) {
+                    // Ajustar según la estructura de datos devuelta por el servidor
+                    const id = item.id || item.id_Estado || item.id_Ciudad || item.id_Municipio || item.id_Parroquia;
+                    const nombre = item.nombre || item.nombre_estado || item.nombre_ciudad || item.nombre_municipio || item.nombre_parroquia || 'Sin nombre';
+                    options += `<option value="${id}">${nombre}</option>`;
+                });
+                $target.html(options).prop('disabled', false);
+            } else {
+                $target.html('<option value="">No hay opciones disponibles</option>').prop('disabled', false);
+            }
+            
+            // Si hay un valor seleccionado, establecerlo
+            const selectedValue = $target.data('selected');
+            if (selectedValue) {
+                $target.val(selectedValue);
+                $target.trigger('change');
+            } else {
+                // Disparar evento de cambio para notificar a otros componentes
+                $target.trigger('change');
+            }
+            
+            return data; // Devolver los datos para posibles usos posteriores
+        },
+        error: function(xhr, status, error) {
+            console.error('Error en la petición AJAX:');
+            console.error('URL:', url);
+            console.error('Params:', params);
+            console.error('Status:', status);
+            console.error('Error:', error);
+            console.error('Response:', xhr.responseText);
+            
+            $target.html('<option value="">Error al cargar los datos</option>').prop('disabled', false);
+            
+            // Rechazar la promesa para manejar el error en llamadas posteriores
+            return Promise.reject(error);
+        }
+    });
+}
+
+// Cargar ciudades cuando cambia el estado
+function cargarCiudades(estadoId) {
+    if (estadoId) {
+        // Limpiar selects dependientes primero
+        $('#id_ciudad, #id_municipio, #id_parroquia')
+            .html('<option value="">Seleccione una opción</option>')
+            .prop('disabled', true);
+            
+        // Cargar ciudades
+        return cargarDependientes(
+            URLS.load_ciudades,
+            { estado_id: estadoId },
+            '#id_ciudad'
+        );
+    } else {
+        $('#id_ciudad, #id_municipio, #id_parroquia')
+            .html('<option value="">Seleccione una opción</option>')
+            .prop('disabled', true);
+        return Promise.resolve();
+    }
+}
+
+// Cargar municipios cuando cambia el estado
+function cargarMunicipios(estadoId) {
+    if (estadoId) {
+        // Limpiar select de parroquia primero
+        $('#id_municipio, #id_parroquia')
+            .html('<option value="">Seleccione una opción</option>')
+            .prop('disabled', true);
+            
+        // Cargar municipios
+        return cargarDependientes(
+            URLS.load_municipios,
+            { estado_id: estadoId },
+            '#id_municipio'
+        );
+    } else {
+        $('#id_municipio, #id_parroquia')
+            .html('<option value="">Seleccione una opción</option>')
+            .prop('disabled', true);
+        return Promise.resolve();
+    }
+}
+
+// Cargar parroquias cuando cambia el municipio
+function cargarParroquias(municipioId) {
+    if (municipioId) {
+        // Limpiar select de parroquia primero
+        $('#id_parroquia')
+            .html('<option value="">Cargando...</option>')
+            .prop('disabled', true);
+            
+        // Cargar parroquias
+        return cargarDependients(
+            URLS.load_parroquias,
+            { municipio_id: municipioId },
+            '#id_parroquia'
+        );
+    } else {
+        $('#id_parroquia')
+            .html('<option value="">Seleccione una opción</option>')
+            .prop('disabled', true);
+        return Promise.resolve();
+    }
+}
+
+// Inicializar tooltips y eventos
+$(document).ready(function() {
+    // Inicializar Select2 para los campos de selección
+    $('.select2').select2({
+        theme: 'bootstrap4',
+        placeholder: 'Seleccione una opción',
+        allowClear: true,
+        width: '100%',
+        dropdownParent: $('body')
+    });
+
+    // Obtener el ID del país predeterminado (Venezuela)
+    const paisPredeterminado = 1; // Asumiendo que 1 es el ID de Venezuela
+    
+    // Cargar estados al cargar la página
+    if ($('#id_estado').length) {
+        // Si hay un estado seleccionado, cargar ciudades y municipios
+        const estadoId = $('#id_estado').val();
+        
+        if (estadoId) {
+            cargarCiudades(estadoId);
+            cargarMunicipios(estadoId);
+            
+            // Si hay un municipio seleccionado, cargar parroquias
+            const municipioId = $('#id_municipio').val();
+            if (municipioId) {
+                setTimeout(function() {
+                    cargarParroquias(municipioId);
+                }, 500);
+            }
+        } else {
+            // Si no hay estado seleccionado, cargar los estados de Venezuela
+            cargarDependientes(
+                URLS.load_estados,
+                { pais_id: paisPredeterminado },
+                '#id_estado'
+            );
+        }
+    }
+    
+    // Manejar cambios en el estado
+    $('#id_estado').on('change', function() {
+        const estadoId = $(this).val();
+        if (estadoId) {
+            cargarCiudades(estadoId);
+            cargarMunicipios(estadoId);
+        } else {
+            $('#id_ciudad, #id_municipio, #id_parroquia')
+                .html('<option value="">Seleccione una opción</option>')
+                .prop('disabled', true);
+        }
+    });
+    
+    // Manejar cambios en el municipio
+    $('#id_municipio').on('change', function() {
+        const municipioId = $(this).val();
+        if (municipioId) {
+            cargarParroquias(municipioId);
+        } else {
+            $('#id_parroquia')
+                .html('<option value="">Seleccione una opción</option>')
+                .prop('disabled', true);
+        }
+    });
+});
+</script>
+{% endblock %}

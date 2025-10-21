@@ -1,0 +1,393 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block title %}{{ titulo }}{% endblock %}
+
+{% block content %}
+<div class="card">
+    <div class="card-header">
+        <h3 class="card-title">{{ titulo }}</h3>
+    </div>
+    <form method="post" enctype="multipart/form-data">
+        {% csrf_token %}
+        <div class="card-body">
+            <ul class="nav nav-tabs" id="medicoTabs" role="tablist">
+                <li class="nav-item">
+                    <a class="nav-link active" id="datos-basicos-tab" data-toggle="tab" href="#datos-basicos" role="tab">
+                        Datos Básicos
+                    </a>
+                </li>
+                <li class="nav-item">
+                    <a class="nav-link" id="ubicacion-tab" data-toggle="tab" href="#ubicacion" role="tab">
+                        Ubicación
+                    </a>
+                </li>
+                <li class="nav-item">
+                    <a class="nav-link" id="seniat-tab" data-toggle="tab" href="#seniat" role="tab">
+                        Datos SENIAT
+                    </a>
+                </li>
+            </ul>
+            
+            <div class="tab-content mt-3" id="medicoTabsContent">
+                <!-- Pestaña de Datos Básicos -->
+                <div class="tab-pane fade show active" id="datos-basicos" role="tabpanel">
+                    <div class="row">
+                        <div class="col-md-6">
+                            <div class="form-group">
+                                <label for="{{ form.Nombres_Medico.id_for_label }}">Nombres</label>
+                                {{ form.Nombres_Medico }}
+                                {% if form.Nombres_Medico.errors %}
+                                    <div class="invalid-feedback d-block">
+                                        {{ form.Nombres_Medico.errors.0 }}
+                                    </div>
+                                {% endif %}
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            <div class="form-group">
+                                <label for="{{ form.Apellidos_Medicos.id_for_label }}">Apellidos</label>
+                                {{ form.Apellidos_Medicos }}
+                                {% if form.Apellidos_Medicos.errors %}
+                                    <div class="invalid-feedback d-block">
+                                        {{ form.Apellidos_Medicos.errors.0 }}
+                                    </div>
+                                {% endif %}
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="row">
+                        <div class="col-md-3">
+                            <div class="form-group">
+                                <label for="{{ form.Prefijo_CIDNI.id_for_label }}">Tipo de ID</label>
+                                {{ form.Prefijo_CIDNI }}
+                            </div>
+                        </div>
+                        <div class="col-md-3">
+                            <div class="form-group">
+                                <label for="{{ form.CIDNI.id_for_label }}">Número de ID</label>
+                                {{ form.CIDNI }}
+                                {% if form.CIDNI.errors %}
+                                    <div class="invalid-feedback d-block">
+                                        {{ form.CIDNI.errors.0 }}
+                                    </div>
+                                {% endif %}
+                            </div>
+                        </div>
+                        <div class="col-md-3">
+                            <div class="form-group">
+                                <label for="{{ form.Fecha_Nacimiento_Medico.id_for_label }}">Fecha de Nacimiento</label>
+                                {{ form.Fecha_Nacimiento_Medico }}
+                            </div>
+                        </div>
+                        <div class="col-md-3">
+                            <div class="form-group">
+                                <label for="{{ form.Sexo.id_for_label }}">Sexo</label>
+                                {{ form.Sexo }}
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="row">
+                        <div class="col-md-4">
+                            <div class="form-group">
+                                <label for="{{ form.Registro_MPPS.id_for_label }}">Registro MPPS</label>
+                                {{ form.Registro_MPPS }}
+                            </div>
+                        </div>
+                        <div class="col-md-4">
+                            <div class="form-group">
+                                <label for="{{ form.Numero_Colegio_de_Medico.id_for_label }}">N° Colegio de Médicos</label>
+                                {{ form.Numero_Colegio_de_Medico }}
+                            </div>
+                        </div>
+                        <div class="col-md-4">
+                            <div class="form-group">
+                                <label for="{{ form.estado_civil.id_for_label }}">Estado Civil</label>
+                                {{ form.estado_civil }}
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="form-group">
+                        <label for="{{ form.Foto_Medico.id_for_label }}">Fotografía</label>
+                        {{ form.Foto_Medico }}
+                        {% if form.instance.Foto_Medico %}
+                            <div class="mt-2">
+                                <img src="{{ form.instance.Foto_Medico.url }}" alt="Foto actual" style="max-height: 100px;">
+                            </div>
+                        {% endif %}
+                    </div>
+                    
+                    <div class="form-check">
+                        {{ form.activo }}
+                        <label class="form-check-label" for="{{ form.activo.id_for_label }}">
+                            Activo
+                        </label>
+                    </div>
+                </div>
+                
+                <!-- Pestaña de Ubicación -->
+                <div class="tab-pane fade" id="ubicacion" role="tabpanel">
+                    <div class="row">
+                        <div class="col-md-6">
+                            <div class="form-group">
+                                <label for="{{ form.Pais.id_for_label }}">País</label>
+                                {{ form.Pais }}
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            <div class="form-group">
+                                <label for="{{ form.estado.id_for_label }}">Estado/Provincia</label>
+                                {{ form.estado }}
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="row">
+                        <div class="col-md-6">
+                            <div class="form-group">
+                                <label for="{{ form.ciudad.id_for_label }}">Ciudad</label>
+                                {{ form.ciudad }}
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            <div class="form-group">
+                                <label for="{{ form.municipio.id_for_label }}">Municipio</label>
+                                {{ form.municipio }}
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="row">
+                        <div class="col-md-6">
+                            <div class="form-group">
+                                <label for="{{ form.parroquia.id_for_label }}">Parroquia</label>
+                                {{ form.parroquia }}
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- Pestaña de Datos SENIAT -->
+                <div class="tab-pane fade" id="seniat" role="tabpanel">
+                    <div class="row">
+                        <div class="col-md-6">
+                            <div class="form-group">
+                                <label for="{{ form_seniat.RIF.id_for_label }}">RIF</label>
+                                {{ form_seniat.RIF }}
+                                {% if form_seniat.RIF.errors %}
+                                    <div class="invalid-feedback d-block">
+                                        {{ form_seniat.RIF.errors.0 }}
+                                    </div>
+                                {% endif %}
+                                <small class="form-text text-muted">Formato: J-12345678-9</small>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="row">
+                        <div class="col-md-12">
+                            <div class="form-group">
+                                <label for="{{ form_seniat.Direccion.id_for_label }}">Dirección Fiscal</label>
+                                {{ form_seniat.Direccion }}
+                                {% if form_seniat.Direccion.errors %}
+                                    <div class="invalid-feedback d-block">
+                                        {{ form_seniat.Direccion.errors.0 }}
+                                    </div>
+                                {% endif %}
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="card-footer">
+            <button type="submit" class="btn btn-primary">
+                <i class="fas fa-save"></i> Guardar
+            </button>
+            <a href="{% url 'citas:listar_medicos' %}" class="btn btn-secondary">
+                <i class="fas fa-arrow-left"></i> Volver
+            </a>
+        </div>
+    </form>
+</div>
+{% endblock %}
+
+{% block javascript %}
+<script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/js/select2.min.js"></script>
+<script>
+// URLs para las peticiones AJAX
+const URLS = {
+    load_estados: '{% url "citas:load_estados" %}',
+    load_ciudades: '{% url "citas:load_ciudades" %}',
+    load_municipios: '{% url "citas:load_municipios" %}',
+    load_parroquias: '{% url "citas:load_parroquias" %}',
+};
+
+// Función para cargar datos dependientes
+function cargarDependientes(url, params, targetSelector) {
+    const $target = $(targetSelector);
+    
+    // Mostrar indicador de carga
+    $target.html('<option value="">Cargando...</option>').prop('disabled', true);
+    
+    // Realizar petición AJAX
+    $.ajax({
+        url: url,
+        data: params,
+        success: function(data) {
+            let options = '<option value="">Seleccione una opción</option>';
+            
+            if (data && data.length > 0) {
+                data.forEach(function(item) {
+                    options += `<option value="${item.id}">${item.nombre || item.nombre_especialidad || item.nombre_estado}</option>`;
+                });
+                $target.html(options).prop('disabled', false);
+            } else {
+                $target.html('<option value="">No hay opciones disponibles</option>').prop('disabled', false);
+            }
+            
+            // Si hay un valor seleccionado, establecerlo
+            const selectedValue = $target.data('selected');
+            if (selectedValue) {
+                $target.val(selectedValue);
+                $target.trigger('change');
+            }
+        },
+        error: function(xhr, status, error) {
+            console.error('Error cargando datos:', error);
+            $target.html('<option value="">Error al cargar los datos</option>').prop('disabled', false);
+        }
+    });
+}
+
+// Cargar estados cuando cambia el país
+function cargarEstados(paisId) {
+    if (paisId) {
+        cargarDependientes(
+            URLS.load_estados, 
+            { pais_id: paisId },
+            '#id_estado'
+        );
+        // Limpiar selects dependientes
+        $('#id_ciudad, #id_municipio, #id_parroquia').html('<option value="">Seleccione una opción</option>').prop('disabled', true);
+    } else {
+        $('#id_estado, #id_ciudad, #id_municipio, #id_parroquia').html('<option value="">Seleccione una opción</option>').prop('disabled', true);
+    }
+}
+
+// Cargar ciudades cuando cambia el estado
+function cargarCiudades(estadoId) {
+    if (estadoId) {
+        cargarDependientes(
+            URLS.load_ciudades,
+            { estado_id: estadoId },
+            '#id_ciudad'
+        );
+        // Limpiar selects dependientes
+        $('#id_municipio, #id_parroquia').html('<option value="">Seleccione una opción</option>').prop('disabled', true);
+    } else {
+        $('#id_ciudad, #id_municipio, #id_parroquia').html('<option value="">Seleccione una opción</option>').prop('disabled', true);
+    }
+}
+
+// Cargar municipios cuando cambia el estado
+function cargarMunicipios(estadoId) {
+    if (estadoId) {
+        cargarDependientes(
+            URLS.load_municipios,
+            { estado_id: estadoId },
+            '#id_municipio'
+        );
+        // Limpiar select de parroquia
+        $('#id_parroquia').html('<option value="">Seleccione una opción</option>').prop('disabled', true);
+    } else {
+        $('#id_municipio, #id_parroquia').html('<option value="">Seleccione una opción</option>').prop('disabled', true);
+    }
+}
+
+// Cargar parroquias cuando cambia el municipio
+function cargarParroquias(municipioId) {
+    if (municipioId) {
+        cargarDependientes(
+            URLS.load_parroquias,
+            { municipio_id: municipioId },
+            '#id_parroquia'
+        );
+    } else {
+        $('#id_parroquia').html('<option value="">Seleccione una opción</option>').prop('disabled', true);
+    }
+}
+
+// Inicializar tooltips y eventos
+document.addEventListener('DOMContentLoaded', function() {
+    // Inicializar tooltips de Bootstrap
+    var tooltipTriggerList = [].slice.call(document.querySelectorAll('[data-bs-toggle="tooltip"]'));
+    var tooltipList = tooltipTriggerList.map(function (tooltipTriggerEl) {
+        return new bootstrap.Tooltip(tooltipTriggerEl);
+    });
+
+    // Inicializar Select2 para los campos de selección múltiple
+    $('.select2').select2({
+        theme: 'bootstrap4',
+        width: '100%',
+        placeholder: 'Seleccione una opción'
+    });
+    
+    // Manejar cambios en el país
+    $('#id_Pais').on('change', function() {
+        const paisId = $(this).val();
+        cargarEstados(paisId);
+    });
+    
+    // Manejar cambios en el estado
+    $('#id_estado').on('change', function() {
+        const estadoId = $(this).val();
+        cargarCiudades(estadoId);
+        cargarMunicipios(estadoId);
+    });
+    
+    // Manejar cambios en el municipio
+    $('#id_municipio').on('change', function() {
+        const municipioId = $(this).val();
+        cargarParroquias(municipioId);
+    });
+    
+    // Si estamos editando, cargar los datos iniciales
+    const paisId = $('#id_Pais').val();
+    const estadoId = $('#id_estado').val();
+    const ciudadId = $('#id_ciudad').val();
+    const municipioId = $('#id_municipio').val();
+    const parroquiaId = $('#id_parroquia').val();
+    
+    if (paisId) {
+        // Guardar los IDs seleccionados como atributos data
+        if (estadoId) $('#id_estado').data('selected', estadoId);
+        if (ciudadId) $('#id_ciudad').data('selected', ciudadId);
+        if (municipioId) $('#id_municipio').data('selected', municipioId);
+        if (parroquiaId) $('#id_parroquia').data('selected', parroquiaId);
+        
+        // Cargar los estados primero
+        cargarEstados(paisId);
+        
+        // Si hay un estado seleccionado, cargar ciudades y municipios
+        if (estadoId) {
+            // Pequeño retraso para asegurar que los estados se carguen primero
+            setTimeout(function() {
+                cargarCiudades(estadoId);
+                cargarMunicipios(estadoId);
+                
+                // Si hay un municipio seleccionado, cargar parroquias
+                if (municipioId) {
+                    setTimeout(function() {
+                        cargarParroquias(municipioId);
+                    }, 500);
+                }
+            }, 500);
+        }
+    }
+});
+</script>
+{% endblock %}

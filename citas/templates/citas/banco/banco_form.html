@@ -1,0 +1,47 @@
+{% extends 'base.html' %}
+{% block content %}
+<div class="container mt-4">
+    <h2>{% if object %}Editar{% else %}Nuevo{% endif %} Banco</h2>
+    <form method="post" class="mt-4">
+        {% csrf_token %}
+        <div class="row mb-3">
+            <div class="col-md-6">
+                <div class="form-group">
+                    <label class="form-label">{{ form.Bancos.label }}</label>
+                    {{ form.Bancos }}
+                    {% if form.Bancos.errors %}
+                        <div class="invalid-feedback d-block">
+                            {{ form.Bancos.errors|join:", " }}
+                        </div>
+                    {% endif %}
+                </div>
+            </div>
+            <div class="col-md-6">
+                <div class="form-group">
+                    <label class="form-label">{{ form.Codigo_Bancario.label }}</label>
+                    {{ form.Codigo_Bancario }}
+                    {% if form.Codigo_Bancario.errors %}
+                        <div class="invalid-feedback d-block">
+                            {{ form.Codigo_Bancario.errors|join:", " }}
+                        </div>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+        <div class="form-check mb-3">
+            {{ form.Activo }}
+            <label class="form-check-label" for="{{ form.Activo.id_for_label }}">
+                {{ form.Activo.label }}
+            </label>
+        </div>
+        <div class="d-grid gap-2 d-md-flex justify-content-md-end">
+            <a href="{% url 'citas:banco_list' %}" class="btn btn-secondary me-md-2">
+                <i class="fas fa-arrow-left"></i> Cancelar
+            </a>
+            <button type="submit" class="btn btn-primary">
+                <i class="fas fa-save"></i> Guardar
+            </button>
+        </div>
+    </form>
+</div>
+{% endblock %}

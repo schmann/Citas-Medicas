@@ -1,0 +1,146 @@
+/* Estilos personalizados para Select2 en el admin de Django */
+
+/* Contenedor principal de Select2 */
+.select2-container {
+    width: 100% !important;
+    min-width: 200px;
+}
+
+/* Dropdown desplegable */
+.select2-dropdown {
+    border: 1px solid #ccc;
+    border-radius: 4px;
+    box-shadow: 0 6px 12px rgba(0, 0, 0, 0.175);
+    z-index: 1060; /* Mayor que el z-index del admin */
+}
+
+/* Estilo del select */
+.select2-container--default .select2-selection--single {
+    height: 38px;
+    padding: 5px 10px;
+    border: 1px solid #ccc;
+    border-radius: 4px;
+    background-color: #fff;
+    box-shadow: inset 0 1px 1px rgba(0, 0, 0, 0.075);
+    transition: border-color 0.15s ease-in-out, box-shadow 0.15s ease-in-out;
+}
+
+/* Estilo del select al pasar el mouse */
+.select2-container--default.select2-container--focus .select2-selection--single,
+.select2-container--default .select2-selection--single:focus {
+    border-color: #5b80b9;
+    outline: 0;
+    box-shadow: 0 0 0 0.2rem rgba(0, 123, 255, 0.25);
+}
+
+/* Estilo de la flecha del select */
+.select2-container--default .select2-selection--single .select2-selection__arrow {
+    height: 36px;
+    width: 30px;
+}
+
+/* Estilo del texto seleccionado */
+.select2-container--default .select2-selection--single .select2-selection__rendered {
+    line-height: 26px;
+    color: #444;
+    padding-right: 30px;
+}
+
+
+/* Estilo de las opciones */
+.select2-results__option {
+    padding: 8px 12px;
+    font-size: 14px;
+}
+
+/* Estilo de la opción seleccionada */
+.select2-container--default .select2-results__option--highlighted[aria-selected] {
+    background-color: #417690;
+    color: white;
+}
+
+/* Estilo del placeholder */
+.select2-container--default .select2-selection--single .select2-selection__placeholder {
+    color: #6c757d;
+}
+
+/* Asegurar que el dropdown no se corte en el admin */
+.select2-container--open .select2-dropdown--below {
+    z-index: 100000;
+}
+
+/* Ajustar el ancho del dropdown para que no se salga de la pantalla */
+.select2-container--default .select2-results > .select2-results__options {
+    max-height: 300px;
+    overflow-y: auto;
+}
+
+/* Estilo para el campo de búsqueda */
+.select2-container--default .select2-search--dropdown .select2-search__field {
+    border: 1px solid #ddd;
+    border-radius: 4px;
+    padding: 5px 10px;
+    margin-bottom: 5px;
+}
+
+/* Ajustes para el admin de Django */
+.field-estado .select2-container,
+.field-municipio .select2-container,
+.field-parroquia .select2-container {
+    max-width: 100%;
+}
+
+/* Asegurar que los selects en filas inline tengan un ancho adecuado */
+.inline-group .select2-container {
+    min-width: 150px !important;
+}
+
+/* Ajustes para móviles */
+@media (max-width: 768px) {
+    .select2-container {
+        width: 100% !important;
+    }
+}
+
+/* Estilo para el foco en el campo de búsqueda */
+.select2-search--dropdown .select2-search__field:focus {
+    border-color: #79aec8;
+    outline: none;
+    box-shadow: 0 0 0 3px rgba(121, 174, 200, 0.3);
+}
+
+/* Estilo para el hover en los elementos de la lista */
+.select2-container--default .select2-results__option--highlighted[aria-selected] {
+    background-color: #79aec8;
+}
+
+/* Estilo para el elemento seleccionado */
+.select2-container--default .select2-results__option[aria-selected=true] {
+    background-color: #f5f5f5;
+    color: #333;
+}
+
+/* Ajustes para el contenedor en modo múltiple */
+.select2-container--default.select2-container--focus .select2-selection--multiple {
+    border: 1px solid #79aec8;
+}
+
+/* Estilo para los tags en modo múltiple */
+.select2-container--default .select2-selection--multiple .select2-selection__choice {
+    background-color: #e4e4e4;
+    border: 1px solid #ccc;
+    border-radius: 3px;
+    padding: 0 6px;
+    font-size: 12px;
+}
+
+/* Estilo para el botón de eliminar en modo múltiple */
+.select2-container--default .select2-selection--multiple .select2-selection__choice__remove {
+    color: #999;
+    margin-right: 4px;
+}
+
+/* Estilo para el botón de eliminar al pasar el ratón */
+.select2-container--default .select2-selection--multiple .select2-selection__choice__remove:hover {
+    color: #333;
+}
