@@ -7,21 +7,7 @@ CREATE DATABASE intersalud;
 
 BEGIN;
 
--- phpMyAdmin SQL Dump
--- version 5.1.1
--- https://www.phpmyadmin.net/
---
--- Servidor: 127.0.0.1
--- Tiempo de generación: 01-06-2022 a las 22:40:03
--- Versión del servidor: 10.4.22-MariaDB
--- Versión de PHP: 7.4.27
 
-
-/*!40101 /*!40101 /*!40101 /*!40101 --
--- Base de datos: "intersalud_prueba"
---
-
--- --------------------------------------------------------
 
 --
 -- Estructura de tabla para la tabla "pago movil"
