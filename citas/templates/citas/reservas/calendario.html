@@ -5,47 +5,165 @@
 {{ block.super }}
 <link href='https://cdn.jsdelivr.net/npm/fullcalendar@5.11.3/main.min.css' rel='stylesheet' />
 <style>
-    /* Estilos base del calendario */
+    /* =================================================== */
+    /* 1. SOLUCIÓN FINAL DE CENTRADO Y AJUSTE DE LAYOUT    */
+    /* =================================================== */
+    
+    /* Ajustes para el contenedor principal */
+    .content-wrapper {
+        padding: 15px !important;
+        margin: 0 auto !important;
+        width: 100%;
+        max-width: 95%;
+    }
+    
+    .content {
+        padding: 15px !important;
+        width: 100%;
+    }
+    
+    .container-fluid {
+        padding: 0 15px !important;
+    }
+    
+    /* Estilo para la tarjeta del calendario */
+    .card {
+        margin: 0 auto;
+        border: 1px solid #dee2e6;
+        border-radius: 8px;
+        box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        width: 100%;
+        max-width: 1200px;
+        display: block;
+    }
+    
+    .card-body {
+        padding: 15px;
+        width: 100%;
+    }
+    
+    /* Estilos para FullCalendar */
+    #calendar {
+        width: 100%;
+        margin: 0 auto;
+        max-width: 100%;
+        box-sizing: border-box;
+    }
+    
+    .fc {
+        font-size: 0.9em;
+    }
+    
+    .fc-toolbar-title {
+        font-size: 1.5em !important;
+    }
+    
+    /* ================================================================= */
+    /* MODAL PERSONALIZADO */
+    /* ================================================================= */
+    
+    /* Contenedor del modal */
+    .custom-modal {
+        position: fixed;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        background-color: rgba(0, 0, 0, 0.7);
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        z-index: 9999;
+        opacity: 0;
+        visibility: hidden;
+        transition: all 0.3s ease;
+    }
+    
+    .custom-modal.show {
+        opacity: 1;
+        visibility: visible;
+    }
+    
+    /* Contenido del modal */
+    .custom-modal-content {
+        background: white;
+        border-radius: 8px;
+        width: 90%;
+        max-width: 500px;
+        max-height: 90vh;
+        overflow-y: auto;
+        position: relative;
+        box-shadow: 0 5px 15px rgba(0, 0, 0, 0.3);
+    }
+    
+    /* Cabecera del modal */
+    .custom-modal-header {
+        padding: 15px 20px;
+        border-bottom: 1px solid #e9ecef;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+    }
+    
+    .custom-modal-title {
+        margin: 0;
+        font-size: 1.25rem;
+    }
+    
+    .custom-modal-close {
+        background: none;
+        border: none;
+        font-size: 1.5rem;
+        cursor: pointer;
+        line-height: 1;
+        padding: 0.5rem;
+        margin: -0.5rem -0.5rem -0.5rem auto;
+    }
+    
+    /* Cuerpo del modal */
+    .custom-modal-body {
+        padding: 20px;
+    }
+    
+    /* Pie del modal */
+    .custom-modal-footer {
+        padding: 15px 20px;
+        border-top: 1px solid #e9ecef;
+        display: flex;
+        justify-content: flex-end;
+    }
+    
+    /* Bloquear scroll cuando el modal está abierto */
+    body.custom-modal-open {
+        overflow: hidden;
+    }
+    
+    /* Estilos de forma para el modal (Mantenidos) */
+    .modal-dialog {
+        max-width: 500px;
+        margin: 1.75rem auto;
+    }
+    
+    /* Otros estilos de evento */
     .fc-event {
         cursor: pointer;
         padding: 2px 4px;
         border-radius: 3px;
         font-size: 0.85em;
-        margin-bottom: 1px;
+        border: none;
     }
+    
     .fc-event-title {
         white-space: normal;
         font-weight: normal;
     }
+    
     .fc-daygrid-event-dot {
         display: none;
     }
-
-    /* Mejora de la relación espacio-objeto */
-    .container-fluid {
-        padding: 20px;
-    }
-    .card {
-        margin-top: 20px;
-        box-shadow: 0 1px 3px rgba(0,0,0,0.1);
-    }
-    .card-body {
-        padding: 20px;
-        width: 100%;
-    }
-    #calendar {
-        width: 100%;
-        margin: 0 auto;
-    }
-
-    /* 🚨 CRÍTICO: SOLO ESTILOS MÍNIMOS DE MODAL, CONFIANDO EN BOOTSTRAP */
-    .modal {
-        /* Asegura que la modal se posicione por encima de otros elementos de Django Admin */
-        z-index: 99999 !important; 
-    }
-    .modal-dialog {
-        /* Tamaño para que se vea ordenado como en sus imágenes */
-        max-width: 500px; 
+    
+    .form-group {
+        margin-bottom: 1rem;
     }
 </style>
 {% endblock %}
@@ -78,75 +196,36 @@
     </section>
 </div>
 
-<div id="citaModal" class="modal fade" tabindex="-1" role="dialog" aria-hidden="true">
-    <div class="modal-dialog" role="document">
-        <div class="modal-content">
-            <div class="modal-header">
-                <h5 class="modal-title" id="citaModalTitle">Detalles de la Cita</h5>
-                <button type="button" class="close" data-dismiss="modal" aria-label="Close">
-                    <span aria-hidden="true">&times;</span>
-                </button>
-            </div>
-            <div class="modal-body" id="citaModalBody">
-                <p>Cargando detalles de la cita...</p>
-            </div>
-            <div class="modal-footer">
-                <button type="button" class="btn btn-secondary" data-dismiss="modal">Cerrar</button>
-            </div>
+<!-- Modal para detalles de cita (Personalizado) -->
+<div id="citaModal" class="custom-modal">
+    <div class="custom-modal-content">
+        <div class="custom-modal-header">
+            <h5 class="custom-modal-title">Detalles de la Cita</h5>
+            <button type="button" class="custom-modal-close" onclick="closeModal('citaModal')">&times;</button>
+        </div>
+        <div class="custom-modal-body" id="citaModalBody">
+            <p>Cargando detalles de la cita...</p>
+        </div>
+        <div class="custom-modal-footer">
+            <button type="button" class="btn btn-secondary" onclick="closeModal('citaModal')">Cerrar</button>
         </div>
     </div>
 </div>
 
-<div id="nuevaCitaModal" class="modal fade" tabindex="-1" role="dialog" aria-hidden="true">
-    <div class="modal-dialog" role="document">
-        <div class="modal-content">
-            <div class="modal-header">
-                <h5 class="modal-title">Nueva Cita</h5>
-                <button type="button" class="close" data-dismiss="modal" aria-label="Close">
-                    <span aria-hidden="true">&times;</span>
-                </button>
-            </div>
-            <div class="modal-body">
-                <form id="nuevaCitaForm">
-                    <div class="form-group">
-                        <label>Paciente</label>
-                        <select class="form-control" name="paciente" required>
-                            <option value="">Seleccione un paciente</option>
-                            {% for paciente in pacientes %}
-                            <option value="{{ paciente.id }}">{{ paciente.Nombres_Paciente }} {{ paciente.Apellidos_Paciente }}</option>
-                            {% endfor %}
-                        </select>
-                    </div>
-                    <div class="form-group">
-                        <label>Médico</label>
-                        <select class="form-control" name="medico" required>
-                            <option value="">Seleccione un médico</option>
-                            {% for medico in medicos %}
-                            <option value="{{ medico.id }}">{{ medico.Nombres_Medico }} {{ medico.Apellidos_Medicos }}</option>
-                            {% endfor %}
-                        </select>
-                    </div>
-                    <div class="form-group">
-                        <label>Costo (Decimal 10,2)</label>
-                        <input type="number" class="form-control" name="costo" value="0.00" min="0" step="0.01">
-                    </div>
-                    <div class="form-group">
-                        <label>Fecha y Hora</label>
-                        <input type="datetime-local" class="form-control" name="fecha_hora" required>
-                    </div>
-                    <div class="form-group">
-                        <label>Duración (minutos)</label>
-                        <input type="number" class="form-control" name="duracion" value="30" min="15" step="15" required>
-                    </div>
-                    <div class="form-group">
-                        <label>Notas</label>
-                        <textarea class="form-control" name="notas" rows="3"></textarea>
-                    </div>
-                </form>
-            </div>
-            <div class="modal-footer">
-                <button type="button" class="btn btn-secondary" data-dismiss="modal">Cancelar</button>
-                <button type="button" class="btn btn-primary" id="guardarCitaBtn">Guardar Cita</button>
+<!-- Modal para nueva cita (Personalizado) -->
+<div id="nuevaCitaModal" class="custom-modal">
+    <div class="custom-modal-content">
+        <div class="custom-modal-header">
+            <h5 class="custom-modal-title">Nueva Cita</h5>
+            <button type="button" class="custom-modal-close" onclick="closeModal('nuevaCitaModal')">&times;</button>
+        </div>
+        <div class="custom-modal-body" id="nuevaCitaModalBody">
+            <!-- El contenido se cargará dinámicamente -->
+            <div class="text-center py-4">
+                <div class="spinner-border text-primary" role="status">
+                    <span class="sr-only">Cargando...</span>
+                </div>
+                <p class="mt-2">Cargando datos necesarios...</p>
             </div>
         </div>
     </div>
@@ -156,17 +235,14 @@
 {% block extrajs %}
 {{ block.super }}
 <script src="https://ajax.googleapis.com/ajax/libs/jquery/3.6.0/jquery.min.js"></script>
-
-<script src="https://cdn.jsdelivr.net/npm/bootstrap@4.6.2/dist/js/bootstrap.bundle.min.js" integrity="sha384-Fy6S3B9q64WdZWQUiU+q4/2Lc9npb8tCaSX9FK7E8HnRr0Jz8D6OP9dO5Vg3Q9ct" crossorigin="anonymous"></script>
-
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@4.6.2/dist/js/bootstrap.bundle.min.js"></script>
 <script src='https://cdn.jsdelivr.net/npm/fullcalendar@5.11.3/main.min.js'></script>
 <script src='https://cdn.jsdelivr.net/npm/fullcalendar@5.11.3/locales/es.js'></script>
 <script src='https://cdn.jsdelivr.net/npm/sweetalert2@11'></script>
 
-
 <script>
 // =================================================================================
-// CÓDIGO JavaScript CONSOLIDADO: Solo jQuery/Bootstrap y FullCalendar
+// CÓDIGO JavaScript CONSOLIDADADO Y ESTABLE
 // =================================================================================
 
 // Configuración de AJAX y CSRF
@@ -191,24 +267,61 @@ function getCookie(name) {
     return cookieValue;
 }
 
-let calendar = null; 
+let calendar = null;
 
 document.addEventListener('DOMContentLoaded', function() {
-    console.log('DOM cargado, inicializando calendario...');
-
     const calendarEl = document.getElementById('calendar');
     if (!calendarEl) return;
 
-    // Cargar eventos (Asegúrese de que su contexto Django pasa la variable eventos_json)
+    // Cargar eventos
     let eventosData = [];
+    
+    // FIX DEFENSO (1): Usamos |default:"[]"|escapejs|safe. La combinación |escapejs|safe a veces es más robusta.
+    const rawJson = '{{eventos_json|default:"[]"|escapejs|safe}}';
+    
+    // FIX DEFENSO (2): Limpieza agresiva de caracteres invisibles y envolventes.
+    // 1. Eliminar caracteres invisibles comunes (BOM, ZWSP) y limpiar espacios.
+    let jsonString = rawJson.replace(/[\uFEFF\u200B]/g, '').trim();
+    
+    // 2. Eliminar comillas envolventes residuales (si Django falló la inyección).
+    if (jsonString.startsWith("'") && jsonString.endsWith("'")) {
+        jsonString = jsonString.substring(1, jsonString.length - 1);
+    }
+    if (jsonString.startsWith('"') && jsonString.endsWith('"')) {
+        jsonString = jsonString.substring(1, jsonString.length - 1);
+    }
+    
+    // Limpieza de espacios después de remover comillas.
+    jsonString = jsonString.trim();
+
+    // NUEVO FIX CRÍTICO: Encontrar el primer carácter JSON válido ([ o {) y cortar todo lo que haya antes.
+    const firstJsonCharIndex = jsonString.search(/[\{\[]/);
+
+    if (firstJsonCharIndex > 0) {
+        // Si encontramos un { o [ después de la posición 0, significa que hay basura inicial.
+        console.warn(`Se detectó basura inicial de ${firstJsonCharIndex} caracteres antes del JSON válido. Eliminando...`);
+        jsonString = jsonString.substring(firstJsonCharIndex);
+    }
+    
+    // Limpieza final de espacios después de cortar.
+    jsonString = jsonString.trim();
+
     try {
-        eventosData = JSON.parse('{{ eventos_json|escapejs }}');
+        if (!jsonString || jsonString === 'None' || jsonString === 'null' || jsonString === '""') {
+             // Si queda vacío después de la limpieza, forzar array vacío.
+             jsonString = '[]';
+        }
+        
+        eventosData = JSON.parse(jsonString);
     } catch (error) {
-        console.error('Error al cargar/parsear los eventos:', error);
+        // En caso de error, el log mostrará el string exacto que falló.
+        console.error('Error al cargar eventos: Falló JSON.parse (limpieza reforzada). Se restableció a array vacío.', error);
+        console.log('JSON String que causó el error (después de limpieza):', jsonString);
+        eventosData = [];
     }
 
-    // Inicializar el calendario
-    const calendarInstance = new FullCalendar.Calendar(calendarEl, {
+    // INICIALIZAR CALENDARIO
+    calendar = new FullCalendar.Calendar(calendarEl, {
         initialView: 'dayGridMonth',
         locale: 'es',
         headerToolbar: {
@@ -217,90 +330,474 @@ document.addEventListener('DOMContentLoaded', function() {
             right: 'dayGridMonth,timeGridWeek,timeGridDay'
         },
         events: eventosData,
+        height: 'auto',
+        contentHeight: 'auto',
+        aspectRatio: 1.5, /* Proporción de aspecto para mejor visualización */
+        handleWindowResize: true, /* Ajustar automáticamente al redimensionar */
+        windowResize: function(view) {
+            calendar.updateSize();
+        },
+        headerToolbar: {
+            left: 'prev,next today',
+            center: 'title',
+            right: 'dayGridMonth,timeGridWeek,timeGridDay'
+        },
+        locale: 'es',
+        
         eventClick: function(info) {
             const event = info.event;
-            const props = event.extendedProps || (event._def ? event._def.extendedProps : {}) || {};
+            const props = event.extendedProps || {};
             const modalBody = $('#citaModalBody');
             
             modalBody.html(`
-                <p><strong>Paciente:</strong> ${props.paciente || 'No disponible'}</p>
-                <p><strong>Médico:</strong> ${props.medico || 'No disponible'}</p>
-                <p><strong>Fecha y Hora:</strong> ${event.start ? event.start.toLocaleString('es-ES') : 'No disponible'}</p>
-                <p><strong>Estado:</strong> ${props.estado || 'Pendiente'}</p>
-                ${props.costo ? `<p><strong>Costo:</strong> $${parseFloat(props.costo).toFixed(2)}</p>` : ''}
-                <p><strong>Notas:</strong> ${props.nota || props.notas || 'Sin notas'}</p>
+                <div class="event-details">
+                    <p><strong>Paciente:</strong> ${props.paciente || 'No disponible'}</p>
+                    <p><strong>Médico:</strong> ${props.medico || 'No disponible'}</p>
+                    <p><strong>Fecha y Hora:</strong> ${event.start ? event.start.toLocaleString('es-ES') : 'No disponible'}</p>
+                    <p><strong>Estado:</strong> ${props.estado || 'Pendiente'}</p>
+                    ${props.costo ? `<p><strong>Costo:</strong> $${parseFloat(props.costo).toFixed(2)}</p>` : ''}
+                    <p><strong>Notas:</strong> ${props.nota || props.notas || 'Sin notas'}</p>
+                </div>
             `);
             
-            // USAR EXCLUSIVAMENTE jQuery/Bootstrap
-            $('#citaModal').modal('show'); 
+            window.showCitaModal();
             info.jsEvent.preventDefault();
         }
     });
 
-    calendar = calendarInstance;
     calendar.render();
 
-    // 1. MANEJADOR PARA NUEVA CITA (USANDO jQuery/Bootstrap)
-    $('#nuevaCitaBtn').on('click', function() {
-        const form = $('#nuevaCitaForm');
-        form[0].reset();
-        
-        // Establecer fecha y hora actual
-        const now = new Date();
-        const year = now.getFullYear();
-        const month = String(now.getMonth() + 1).padStart(2, '0');
-        const day = String(now.getDate()).padStart(2, '0');
-        const hours = String(now.getHours()).padStart(2, '0');
-        const minutes = String(now.getMinutes()).padStart(2, '0');
-        
-        form.find('input[name="fecha_hora"]').val(`${year}-${month}-${day}T${hours}:${minutes}`);
-        form.find('input[name="duracion"]').val('30');
-        form.find('input[name="costo"]').val('0.00');
+    // Actualizar tamaño de FullCalendar tras renderizado
+    setTimeout(() => {
+        calendar.updateSize();
+    }, 100);
 
-        // USAR EXCLUSIVAMENTE jQuery/Bootstrap
-        $('#nuevaCitaModal').modal('show'); 
+    // MANEJADOR PARA NUEVA CITA
+    $(document).on('click', '#nuevaCitaBtn', function() {
+        // Mostrar el modal de nueva cita
+        showNuevaCitaModal();
+    });
     });
 
-    // 2. MANEJADOR PARA GUARDAR CITA (USANDO jQuery/Bootstrap)
+    // MANEJADOR PARA GUARDAR CITA
     $('#guardarCitaBtn').on('click', function() {
         const form = $('#nuevaCitaForm');
-        if (form[0].checkValidity()) {
-            const formData = {
-                paciente: form.find('select[name="paciente"]').val(),
-                medico: form.find('select[name="medico"]').val(),
-                fecha_hora: form.find('input[name="fecha_hora"]').val(),
-                duracion: form.find('input[name="duracion"]').val(),
-                costo: form.find('input[name="costo"]').val(),
-                notas: form.find('textarea[name="notas"]').val(),
-                estado: 'pendiente'
-            };
-
-            const btn = $(this);
-            const originalText = btn.html();
-            btn.html('<i class="fas fa-spinner fa-spin"></i> Guardando...').prop('disabled', true);
-
-            $.ajax({
-                url: '{% url "citas:crear_cita" %}',
-                type: 'POST',
-                data: formData,
-                success: function(response) {
-                    // USAR EXCLUSIVAMENTE jQuery/Bootstrap para cerrar el modal
-                    $('#nuevaCitaModal').modal('hide'); 
-                    Swal.fire({ title: '¡Éxito!', text: 'La cita se ha guardado correctamente', icon: 'success' });
-                    calendar.refetchEvents();
-                },
-                error: function(xhr) {
-                    let errorMessage = xhr.responseJSON && xhr.responseJSON.error ? xhr.responseJSON.error : 'Ocurrió un error al guardar la cita';
-                    Swal.fire({ title: 'Error', text: errorMessage, icon: 'error' });
-                },
-                complete: function() {
-                    btn.html(originalText).prop('disabled', false);
-                }
-            });
-        } else {
+        
+        if (!form[0].checkValidity()) {
             form[0].reportValidity();
+            return;
+        }
+
+        const formData = {
+            paciente: form.find('#pacienteSelect').val(),
+            medico: form.find('#medicoSelect').val(),
+            fecha_hora: form.find('#fechaHoraInput').val(),
+            duracion: form.find('#duracionInput').val(),
+            costo: form.find('#costoInput').val(),
+            notas: form.find('#notasTextarea').val(),
+            estado: 'pendiente'
+        };
+
+        const btn = $(this);
+        const originalText = btn.html();
+        btn.html('<i class="fas fa-spinner fa-spin"></i> Guardando...').prop('disabled', true);
+
+        // Enviar datos via AJAX
+        $.ajax({
+            url: '{% url "citas:crear_cita" %}',
+            type: 'POST',
+            data: formData,
+            success: function(response) {
+                $('#nuevaCitaModal').modal('hide');
+                
+                Swal.fire({
+                    title: '¡Éxito!',
+                    text: 'La cita se ha guardado correctamente',
+                    icon: 'success',
+                    confirmButtonText: 'Aceptar'
+                });
+                
+                calendar.refetchEvents();
+            },
+            error: function(xhr) {
+                let errorMessage = 'Ocurrió un error al guardar la cita';
+                
+                if (xhr.responseJSON && xhr.responseJSON.error) {
+                    errorMessage = xhr.responseJSON.error;
+                } else if (xhr.status === 0) {
+                    errorMessage = 'Error de conexión. Verifique su internet.';
+                } else if (xhr.status === 500) {
+                    errorMessage = 'Error interno del servidor.';
+                }
+                
+                Swal.fire({
+                    title: 'Error',
+                    text: errorMessage,
+                    icon: 'error',
+                    confirmButtonText: 'Aceptar'
+                });
+            },
+            complete: function() {
+                btn.html(originalText).prop('disabled', false);
+            }
+        });
+    });
+
+    // ============================================================
+    // MANEJO DE MODALES PERSONALIZADOS
+    // ============================================================
+    
+    // Función para mostrar un modal
+    function showModal(modalId) {
+        console.log('Mostrando modal:', modalId); // Para depuración
+        
+        // Cerrar cualquier otro modal abierto
+        document.querySelectorAll('.custom-modal.show').forEach(modal => {
+            if (modal.id !== modalId) {
+                modal.classList.remove('show');
+                modal.style.display = 'none';
+            }
+        });
+        
+        // Mostrar el modal solicitado
+        const modal = document.getElementById(modalId);
+        if (modal) {
+            modal.style.display = 'flex';
+            modal.classList.add('show');
+            document.body.classList.add('custom-modal-open');
+            
+            // Forzar el repintado para asegurar que se apliquen las transiciones
+            void modal.offsetHeight;
+            
+            // Enfocar el primer elemento interactivo
+            setTimeout(() => {
+                const focusable = modal.querySelector('button, [href], input, select, textarea, [tabindex]:not([tabindex="-1"])');
+                if (focusable) focusable.focus();
+            }, 100);
+        } else {
+            console.error('No se encontró el modal con ID:', modalId);
+        }
+    }
+    
+    // Función para cerrar un modal
+    function closeModal(modalId) {
+        console.log('Cerrando modal:', modalId); // Para depuración
+        const modal = document.getElementById(modalId);
+        if (modal) {
+            modal.classList.remove('show');
+            // Agregar un pequeño retraso antes de ocultar para permitir la animación
+            setTimeout(() => {
+                modal.style.display = 'none';
+            }, 300);
+            
+            // Si no hay más modales abiertos, quitar la clase del body
+            if (document.querySelectorAll('.custom-modal.show').length === 0) {
+                document.body.classList.remove('custom-modal-open');
+            }
+        } else {
+            console.error('No se pudo cerrar el modal. ID no encontrado:', modalId);
+        }
+    }
+    
+    // Cerrar al hacer clic fuera del contenido
+    document.addEventListener('click', function(e) {
+        if (e.target.classList.contains('custom-modal')) {
+            closeModal(e.target.id);
         }
     });
-});
+    
+    // Cerrar con la tecla Escape
+    document.addEventListener('keydown', function(e) {
+        if (e.key === 'Escape') {
+            document.querySelectorAll('.custom-modal.show').forEach(modal => {
+                closeModal(modal.id);
+            });
+        }
+    });
+    
+    // Función para mostrar el modal de detalles
+    window.showCitaModal = function() {
+        showModal('citaModal');
+    };
+    
+    // Funciones auxiliares para cargar datos
+    function cargarPacientes() {
+        return new Promise((resolve, reject) => {
+            $.ajax({
+                url: '{% url "citas:obtener_pacientes" %}',
+                type: 'GET',
+                dataType: 'json',
+                success: resolve,
+                error: (xhr) => {
+                    console.error('Error al cargar pacientes:', xhr);
+                    reject('Error al cargar la lista de pacientes');
+                }
+            });
+        });
+    }
+
+    function cargarMedicos() {
+        return new Promise((resolve, reject) => {
+            $.ajax({
+                url: '{% url "citas:obtener_medicos" %}',
+                type: 'GET',
+                dataType: 'json',
+                success: resolve,
+                error: (xhr) => {
+                    console.error('Error al cargar médicos:', xhr);
+                    reject('Error al cargar la lista de médicos');
+                }
+            });
+        });
+    }
+
+    // Función para mostrar el modal de nueva cita
+    window.showNuevaCitaModal = async function() {
+        // Mostrar el modal con mensaje de carga
+        showModal('nuevaCitaModal');
+        
+        try {
+            // Cargar datos en paralelo
+            const [pacientes, medicos] = await Promise.all([
+                cargarPacientes(),
+                cargarMedicos()
+            ]);
+            
+            // Crear opciones de pacientes
+            let pacientesOptions = '<option value="">Seleccione un paciente</option>';
+            if (pacientes && pacientes.pacientes) {
+                pacientes.pacientes.forEach(paciente => {
+                    pacientesOptions += `<option value="${paciente.id_Paciente}">${paciente.Nombres_Paciente} ${paciente.Apellidos_Paciente}</option>`;
+                });
+            }
+            
+            // Crear opciones de médicos
+            let medicosOptions = '<option value="">Seleccione un médico</option>';
+            if (medicos && medicos.medicos) {
+                medicos.medicos.forEach(medico => {
+                    medicosOptions += `<option value="${medico.id_Medico}">${medico.Nombres_Medico} ${medico.Apellidos_Medicos}</option>`;
+                });
+            }
+            
+            // Crear el formulario
+            const formHTML = `
+                <form id="nuevaCitaForm">
+                    <div class="form-group">
+                        <label for="pacienteSelect" class="font-weight-bold">Paciente</label>
+                        <select class="form-control" id="pacienteSelect" name="paciente" required>
+                            ${pacientesOptions}
+                        </select>
+                    </div>
+                    
+                    <div class="form-group">
+                        <label for="medicoSelect" class="font-weight-bold">Médico</label>
+                        <select class="form-control" id="medicoSelect" name="medico" required>
+                            ${medicosOptions}
+                        </select>
+                    </div>
+                    
+                    <div class="form-group">
+                        <label for="costoInput" class="font-weight-bold">Costo</label>
+                        <div class="input-group">
+                            <div class="input-group-prepend">
+                                <span class="input-group-text">$</span>
+                            </div>
+                          <input type="number" 
+                                 class="form-control" 
+                                 id="costoInput" 
+                                 name="costo" 
+                                 value="" 
+                                 min="0"
+                                 step="0.01"
+                                 placeholder="0.00" 
+                                 required
+                                 onkeypress="return (event.charCode >= 48 && event.charCode <= 57) || event.charCode === 46">
+                        </div>
+                        <small class="form-text text-muted">Ingrese el monto (ejemplo: 20.50)</small>
+                    </div>
+                    
+                    <div class="form-group">
+                        <label for="fechaHoraInput" class="font-weight-bold">Fecha y Hora</label>
+                        <input type="datetime-local" class="form-control" id="fechaHoraInput" name="fecha_hora" required>
+                    </div>
+                    
+                    <div class="form-group">
+                        <label for="duracionInput" class="font-weight-bold">Duración (minutos)</label>
+                        <select class="form-control" id="duracionInput" name="duracion" required>
+                            <option value="15">15 minutos</option>
+                            <option value="30" selected>30 minutos</option>
+                            <option value="45">45 minutos</option>
+                            <option value="60">60 minutos</option>
+                            <option value="90">90 minutos</option>
+                            <option value="120">120 minutos</option>
+                        </select>
+                    </div>
+                    
+                    <div class="form-group">
+                        <label for="notasTextarea" class="font-weight-bold">Notas</label>
+                        <textarea class="form-control" 
+                                  id="notasTextarea" 
+                                  name="notas" 
+                                  rows="3" 
+                                  placeholder="Notas adicionales..."
+                                  style="resize: vertical;"></textarea>
+                    </div>
+                    
+                    <div class="custom-modal-footer mt-3">
+                        <button type="button" class="btn btn-secondary" onclick="closeModal('nuevaCitaModal')">Cancelar</button>
+                        <button type="submit" class="btn btn-primary">
+                            <i class="fas fa-save"></i> Guardar Cita
+                        </button>
+                    </div>
+                </form>`;
+                
+            // Actualizar el contenido del modal
+            document.getElementById('nuevaCitaModalBody').innerHTML = formHTML;
+            
+            // Configurar la fecha y hora actual
+            const now = new Date();
+            const year = now.getFullYear();
+            const month = String(now.getMonth() + 1).padStart(2, '0');
+            const day = String(now.getDate()).padStart(2, '0');
+            const hours = String(now.getHours()).padStart(2, '0');
+            const minutes = String(now.getMinutes()).padStart(2, '0');
+            
+            document.getElementById('fechaHoraInput').value = `${year}-${month}-${day}T${hours}:${minutes}`;
+            
+            // Manejar el envío del formulario
+            document.getElementById('nuevaCitaForm').addEventListener('submit', function(e) {
+                e.preventDefault();
+                manejarGuardarCita(e);
+            });
+            
+        } catch (error) {
+            console.error('Error al cargar datos:', error);
+            document.getElementById('nuevaCitaModalBody').innerHTML = `
+                <div class="alert alert-danger">
+                    <h5>Error al cargar los datos</h5>
+                    <p>${error.message || 'Ocurrió un error al cargar los datos necesarios. Por favor, intente de nuevo.'}</p>
+                    <div class="text-center mt-3">
+                        <button class="btn btn-secondary" onclick="closeModal('nuevaCitaModal')">Cerrar</button>
+                        <button class="btn btn-primary" onclick="showNuevaCitaModal()">Reintentar</button>
+                    </div>
+                </div>`;
+        }
+    
+    // Función para manejar el guardado de la cita
+    function manejarGuardarCita(event) {
+        // Prevenir el comportamiento por defecto del formulario
+        if (event) {
+            event.preventDefault();
+        }
+        
+        const form = document.getElementById('nuevaCitaForm');
+        if (!form) {
+            console.error('No se encontró el formulario de nueva cita');
+            return;
+        }
+        
+        const submitBtn = form.querySelector('button[type="submit"]');
+        const originalBtnText = submitBtn ? submitBtn.innerHTML : '';
+        
+        if (!form.checkValidity()) {
+            form.reportValidity();
+            return;
+        }
+        
+        // Mostrar loading
+        if (submitBtn) {
+            submitBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Guardando...';
+            submitBtn.disabled = true;
+        }
+        
+        // Obtener datos del formulario
+        const formData = new FormData(form);
+        const formDataObj = {
+            paciente: formData.get('paciente'),
+            medico: formData.get('medico'),
+            fecha_hora: formData.get('fecha_hora'),
+            duracion: formData.get('duracion') || '30',  // Valor por defecto 30 minutos
+            costo: formData.get('costo') || '0.00',      // Valor por defecto 0.00
+            notas: formData.get('notas') || ''           // Notas opcionales
+        };
+        
+        console.log('Datos a enviar:', formDataObj);
+        
+        // Agregar el token CSRF
+        const csrfToken = getCookie('csrftoken');
+        
+        // Validar campos requeridos
+        if (!formDataObj.paciente || !formDataObj.medico || !formDataObj.fecha_hora) {
+            alert('Por favor complete todos los campos requeridos');
+            if (submitBtn) {
+                submitBtn.innerHTML = originalBtnText;
+                submitBtn.disabled = false;
+            }
+            return;
+        }
+        
+        // Crear FormData para el envío
+        const formDataToSend = new FormData();
+        formDataToSend.append('paciente', formDataObj.paciente);
+        formDataToSend.append('medico', formDataObj.medico);
+        formDataToSend.append('fecha_hora', formDataObj.fecha_hora);
+        formDataToSend.append('duracion', formDataObj.duracion);
+        formDataToSend.append('costo', formDataObj.costo);
+        formDataToSend.append('notas', formDataObj.notas);
+        
+        // Enviar datos al servidor
+        fetch('{% url "citas:guardar_cita" %}', {
+            method: 'POST',
+            headers: {
+                'X-CSRFToken': csrfToken,
+                'X-Requested-With': 'XMLHttpRequest'
+            },
+            body: formDataToSend
+        })
+        .then(async response => {
+            const data = await response.json().catch(() => ({}));
+            if (!response.ok) {
+                const error = new Error(data.error || 'Error en la respuesta del servidor');
+                error.response = data;
+                throw error;
+            }
+            return data;
+        })
+        .then(data => {
+            console.log('Respuesta del servidor:', data);
+            if (data.success) {
+                // Cerrar el modal y recargar el calendario
+                closeModal('nuevaCitaModal');
+                if (calendar) {
+                    calendar.refetchEvents();
+                }
+                // Mostrar mensaje de éxito
+                alert(data.message || 'Cita guardada correctamente');
+                // Recargar la página para asegurar que todo esté actualizado
+                window.location.reload();
+            } else {
+                throw new Error(data.error || 'Error al guardar la cita');
+            }
+        })
+        .catch(error => {
+            console.error('Error al guardar la cita:', error);
+            let errorMessage = 'Error al guardar la cita';
+            if (error.response) {
+                // Si el servidor devolvió un mensaje de error, mostrarlo
+                errorMessage += ': ' + (error.response.error || JSON.stringify(error.response));
+            } else {
+                errorMessage += ': ' + error.message;
+            }
+            alert(errorMessage);
+        })
+        .finally(() => {
+            // Restaurar el botón
+            if (submitBtn) {
+                submitBtn.innerHTML = originalBtnText;
+                submitBtn.disabled = false;
+            }
+        });
+    }
+    }
 </script>
 {% endblock %}

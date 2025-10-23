@@ -46,6 +46,10 @@ urlpatterns = [
     path('consultorios/eliminar/<int:pk>/', login_required(ConsultorioDeleteView.as_view()), name='consultorio_delete'),
     path('consultorios/toggle-status/<int:pk>/', login_required(toggle_consultorio_status), name='consultorio_toggle_status'),
 
+    # URLs para AJAX
+    path('ajax/obtener-pacientes/', views.obtener_pacientes, name='obtener_pacientes'),
+    path('ajax/obtener-medicos/', views.obtener_medicos, name='obtener_medicos'),
+    
     # URLs de Bancos
     path('bancos/', views.BancoListView.as_view(), name='banco_list'),
     path('bancos/nuevo/', views.BancoCreateView.as_view(), name='banco_create'),
@@ -63,8 +67,9 @@ urlpatterns = [
     # AGREGAR ESTA RUTA PARA HORARIOS JSON
     path('horarios-json/', views.horarios_json, name='horarios_json'),
     
-    # O si ya tienes una ruta para agenda, verifica que esté así:
+    # Rutas para el calendario y gestión de citas
     path('agenda/', views.agenda_medico, name='agenda_medico'),
     path('crear_cita/', views.crear_cita, name='crear_cita'),
+    path('guardar_cita/', views.guardar_cita, name='guardar_cita'),
     path('calendario/', views.calendario_view, name='calendario'),
 ]

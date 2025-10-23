@@ -362,6 +362,40 @@ class BancoDeleteView(DeleteView):
         return super().delete(request, *args, **kwargs)
 
 # -------------------------------------------------------------
+# VISTAS PARA OBTENER DATOS VIA AJAX
+# -------------------------------------------------------------
+
+def obtener_pacientes(request):
+    """
+    Vista para obtener la lista de pacientes activos en formato JSON
+    """
+    from .models import Paciente
+    
+    try:
+        pacientes = Paciente.objects.filter(Activo=True).values('id_Paciente', 'Nombres_Paciente', 'Apellidos_Paciente')
+        pacientes_list = list(pacientes)
+        return JsonResponse({'pacientes': pacientes_list}, status=200)
+    except Exception as e:
+        return JsonResponse({'error': str(e)}, status=500)
+
+def obtener_medicos(request):
+    """
+    Vista para obtener la lista de médicos activos en formato JSON
+    """
+    from .models import UsuarioMedico
+    
+    try:
+        medicos = UsuarioMedico.objects.filter(activo=True).values(
+            'id_Medico', 
+            'Nombres_Medico', 
+            'Apellidos_Medicos'
+        )
+        medicos_list = list(medicos)
+        return JsonResponse({'medicos': medicos_list}, status=200)
+    except Exception as e:
+        return JsonResponse({'error': str(e)}, status=500)
+
+# -------------------------------------------------------------
 # VISTAS DE AGENDA Y CALENDARIO
 # -------------------------------------------------------------
 
@@ -558,6 +592,106 @@ def get_estado_color(estado):
 def agenda_medico(request):
     # Renderiza la plantilla del calendario.
     return render(request, 'citas/calendario.html')
+
+def guardar_cita(request):
+    """
+    Vista para guardar una nueva cita en la tabla citas_reservadas
+    """
+    if request.method != 'POST':
+        return JsonResponse({'error': 'Método no permitido'}, status=405)
+    
+    try:
+        from django.utils import timezone
+        from datetime import timedelta
+        from .models import CitasReservadas, HorarioCita, Paciente, UsuarioMedico
+        
+        # Obtener datos del formulario
+        paciente_id = request.POST.get('paciente')
+        medico_id = request.POST.get('medico')
+        fecha_hora = request.POST.get('fecha_hora')
+        duracion = int(request.POST.get('duracion', 30))  # 30 minutos por defecto
+        notas = request.POST.get('notas', '')
+        costo = request.POST.get('costo', '0.00')
+        
+        # Validaciones básicas
+        if not all([paciente_id, medico_id, fecha_hora]):
+            return JsonResponse(
+                {'error': 'Faltan campos requeridos: paciente, médico o fecha/hora'}, 
+                status=400
+            )
+        
+        # Convertir la fecha/hora al formato correcto
+        try:
+            fecha_hora_dt = datetime.strptime(fecha_hora, '%Y-%m-%dT%H:%M')
+            fecha_hora_dt = timezone.make_aware(fecha_hora_dt)
+            fecha_fin_dt = fecha_hora_dt + timedelta(minutes=duracion)
+        except (ValueError, TypeError) as e:
+            return JsonResponse(
+                {'error': f'Formato de fecha inválido: {str(e)}'}, 
+                status=400
+            )
+        
+        # Obtener el paciente y el médico
+        try:
+            paciente = Paciente.objects.get(id_Paciente=paciente_id)
+            medico = UsuarioMedico.objects.get(id_Medico=medico_id)
+        except (Paciente.DoesNotExist, UsuarioMedico.DoesNotExist) as e:
+            return JsonResponse(
+                {'error': 'Paciente o médico no encontrado'}, 
+                status=404
+            )
+        
+        # Buscar un horario existente o crear uno temporal
+        # En una implementación real, deberías tener un horario existente
+        # Aquí creamos uno temporal para el ejemplo
+        horario = HorarioCita.objects.filter(
+            medico=medico,
+            start_datetime__lte=fecha_hora_dt,
+            end_datetime__gte=fecha_fin_dt,
+            activo=True
+        ).first()
+        
+        if not horario:
+            # Si no hay un horario existente, creamos uno temporal
+            # En producción, deberías manejar esto de manera diferente
+            horario = HorarioCita(
+                medico=medico,
+                especialidad=medico.especialidades.first(),  # Tomar la primera especialidad del médico
+                turno_id=1,  # Asignar un turno por defecto
+                start_datetime=fecha_hora_dt,
+                end_datetime=fecha_fin_dt,
+                activo=True
+            )
+            horario.save()
+        
+        # Crear la cita reservada
+        cita = CitasReservadas(
+            horario=horario,
+            paciente=paciente,
+            start_datetime=fecha_hora_dt,
+            end_datetime=fecha_fin_dt,
+            estado='pendiente',
+            nota=notas,
+            costo=costo
+        )
+        cita.save()
+        
+        return JsonResponse({
+            'success': True,
+            'message': 'Cita guardada exitosamente',
+            'cita_id': cita.id
+        })
+        
+    except Exception as e:
+        import traceback
+        return JsonResponse(
+            {
+                'error': 'Error al guardar la cita',
+                'details': str(e),
+                'trace': traceback.format_exc()
+            }, 
+            status=500
+        )
 
 def horarios_json(request):
     """Versión que respeta la fecha UNTIL del RRULE"""
