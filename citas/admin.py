@@ -6,12 +6,16 @@ from django.contrib import admin
 from django.contrib.auth.models import User, Group
 from django.contrib.auth.admin import UserAdmin, GroupAdmin 
 from django.http import JsonResponse
-from django.urls import path
+from django.urls import path, reverse
 from django.utils.safestring import mark_safe
+from django.urls import reverse_lazy
+from django.contrib import messages
 
 # Importaciones de terceros
 from dateutil import rrule
 import datetime
+import pytz
+from django.utils import timezone
 
 # Importar modelos de la aplicación
 from .models import (
@@ -22,23 +26,24 @@ from .models import (
 )
 
 # ----------------------------------------------------
-# 1. ADMIN SITE PERSONALIZADO (Definición Única y Centralizada)
+# 1. ADMIN SITE PERSONALIZADO (SIMPLIFICADO PARA JAZZMIN)
 # ----------------------------------------------------
 class CustomAdminSite(admin.AdminSite):
     site_header = 'Unidad Médica Admin'
     site_title = 'Unidad Médica'
     index_title = 'Administración'
-
+    
     def get_urls(self):
         urls = super().get_urls()
         custom_urls = [
             path('get_ciudades/', self.admin_view(self.get_ciudades), name='get_ciudades'),
             path('get_municipios/', self.admin_view(self.get_municipios), name='get_municipios'),
             path('get_parroquias/', self.admin_view(self.get_parroquias), name='get_parroquias'),
+            path('get_especialidades_medico/', self.admin_view(self.get_especialidades_medico), name='get_especialidades_medico'),
         ]
         return custom_urls + urls
 
-    # Métodos de vista para AJAX (para la selección de Ubicaciones)
+    # Métodos de vista para AJAX
     def get_ciudades(self, request):
         estado_id = request.GET.get('estado_id')
         if estado_id:
@@ -59,10 +64,19 @@ class CustomAdminSite(admin.AdminSite):
             parroquias = Parroquia.objects.filter(municipio_id=municipio_id).values('id_Parroquia', 'nombre')
             return JsonResponse(list(parroquias), safe=False)
         return JsonResponse([], safe=False)
+    
+    def get_especialidades_medico(self, request):
+        medico_id = request.GET.get('medico_id')
+        if medico_id:
+            especialidades = MedicoEspecialidad.objects.filter(
+                medico_id=medico_id, 
+                activo=True
+            ).select_related('especialidad').values('id', 'especialidad__Espacialidad_Medica')
+            return JsonResponse(list(especialidades), safe=False)
+        return JsonResponse([], safe=False)
 
-
-# Crear la ÚNICA instancia personalizada de AdminSite
-admin_site = CustomAdminSite(name='citas_admin') 
+# Crear la instancia personalizada de AdminSite
+admin_site = CustomAdminSite(name='citas_admin')
 
 # --------------------------------------------------------------------------
 # 2. DEFINICIONES DE HORARIO Y TURNO (Para la Recurrencia)
@@ -82,9 +96,34 @@ DAY_CHOICES = (
 )
 
 class HorarioCitaForm(forms.ModelForm):
-    """Formulario para gestionar los campos de recurrencia y generar el RRULE."""
+    """
+    Formulario para gestionar los horarios de citas con campos separados para fecha y hora.
+    """
+    # Campos para fecha y hora de inicio
+    fecha_inicio = forms.DateField(
+        widget=forms.DateInput(attrs={'type': 'date', 'class': 'form-control'}),
+        required=True,
+        label='Fecha de inicio'
+    )
+    hora_inicio = forms.TimeField(
+        widget=forms.TimeInput(attrs={'type': 'time', 'class': 'form-control', 'step': '300'}),
+        required=True,
+        label='Hora de inicio'
+    )
     
-    # Campos auxiliares que NO existen en el modelo (sólo para la UI)
+    # Campos para fecha y hora de fin
+    fecha_fin = forms.DateField(
+        widget=forms.DateInput(attrs={'type': 'date', 'class': 'form-control'}),
+        required=True,
+        label='Fecha de fin'
+    )
+    hora_fin = forms.TimeField(
+        widget=forms.TimeInput(attrs={'type': 'time', 'class': 'form-control', 'step': '300'}),
+        required=True,
+        label='Hora de fin'
+    )
+    
+    # Campos de recurrencia
     recurrence_frequency = forms.ChoiceField(
         choices=FREQ_CHOICES,
         required=False,
@@ -102,145 +141,236 @@ class HorarioCitaForm(forms.ModelForm):
     recurrence_until = forms.DateField(
         required=False,
         label="Repetir hasta (opcional, formato AAAA-MM-DD)",
-        widget=forms.DateInput(attrs={'type': 'date'})
+        widget=forms.DateInput(attrs={'type': 'date', 'class': 'form-control'})
     )
-
-    class Media:
-        css = {
-            'all': ('//cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/css/select2.min.css',)
-        }
-        js = (
-            '//code.jquery.com/jquery-3.6.0.min.js',
-            '//cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/js/select2.min.js',
-        )
 
     class Meta:
         model = HorarioCita
-        fields = '__all__'  # Incluir todos los campos por defecto
+        fields = '__all__'
+        exclude = ('start_datetime', 'end_datetime')  # Excluimos los campos originales
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        
+        # Si estamos editando un objeto existente, establecer valores iniciales
+        if self.instance and self.instance.pk:
+            tz = timezone.get_current_timezone()
+            if self.instance.start_datetime:
+                local_start = timezone.localtime(self.instance.start_datetime, tz)
+                self.initial['fecha_inicio'] = local_start.date()
+                self.initial['hora_inicio'] = local_start.time()
+            if self.instance.end_datetime:
+                local_end = timezone.localtime(self.instance.end_datetime, tz)
+                self.initial['fecha_fin'] = local_end.date()
+                self.initial['hora_fin'] = local_end.time()
 
     def clean(self):
         cleaned_data = super().clean()
-        
+        tz = timezone.get_current_timezone()
+
+        # Obtener fechas y horas del formulario
+        fecha_inicio = cleaned_data.get('fecha_inicio')
+        hora_inicio = cleaned_data.get('hora_inicio')
+        fecha_fin = cleaned_data.get('fecha_fin')
+        hora_fin = cleaned_data.get('hora_fin')
+
+        # Combinar fecha y hora
+        if fecha_inicio and hora_inicio:
+            start_datetime = timezone.make_aware(
+                datetime.datetime.combine(fecha_inicio, hora_inicio),
+                tz
+            )
+            cleaned_data['start_datetime'] = start_datetime
+
+        if fecha_fin and hora_fin:
+            end_datetime = timezone.make_aware(
+                datetime.datetime.combine(fecha_fin, hora_fin),
+                tz
+            )
+            cleaned_data['end_datetime'] = end_datetime
+
+        # Validar que la fecha de fin sea posterior a la de inicio
+        if 'start_datetime' in cleaned_data and 'end_datetime' in cleaned_data:
+            if cleaned_data['end_datetime'] <= cleaned_data['start_datetime']:
+                self.add_error('fecha_fin', 'La fecha y hora de finalización debe ser posterior a la de inicio')
+                self.add_error('hora_fin', '')
+
+        # Procesar regla de recurrencia si existe
         freq = cleaned_data.get('recurrence_frequency')
         byday = cleaned_data.get('recurrence_byday')
         until = cleaned_data.get('recurrence_until')
-        start_datetime = cleaned_data.get('start_datetime')
-        end_datetime = cleaned_data.get('end_datetime')
         
-        # Validar que la fecha de inicio sea anterior a la de fin
-        if start_datetime and end_datetime and start_datetime >= end_datetime:
-            raise forms.ValidationError({
-                'end_datetime': 'La fecha/hora de fin debe ser posterior a la de inicio.'
-            })
-        
-        # Si no hay frecuencia, no hay recurrencia.
-        if not freq:
+        if freq:
+            # Construir la regla de recurrencia
+            rrule_parts = [f"FREQ={freq}"]
+            
+            if freq == 'WEEKLY' and byday:
+                rrule_parts.append(f"BYDAY={','.join(byday)}")
+            
+            if until:
+                # Convertir la fecha de fin a UTC para la regla de recurrencia
+                dt_until = datetime.datetime.combine(until, datetime.time(23, 59, 59))
+                dt_until = timezone.make_aware(dt_until, tz).astimezone(datetime.timezone.utc)
+                rrule_parts.append(f"UNTIL={dt_until.strftime('%Y%m%dT%H%M%SZ')}")
+            
+            cleaned_data['recurrence_rule'] = ";".join(rrule_parts)
+        else:
             cleaned_data['recurrence_rule'] = None
-            return cleaned_data
-                
-        if freq == 'WEEKLY' and not byday:
-            raise forms.ValidationError(
-                {'recurrence_byday': 'Debe seleccionar al menos un día si la repetición es semanal.'}
-            )
 
-
-        # 1. Construcción Manual de la Cadena RRULE
-        rrule_parts = [f"FREQ={freq}"]
-        
-        if freq == 'WEEKLY' and byday:
-            # Ordenamos los días y los añadimos (Ej: BYDAY=MO,WE,FR)
-            rrule_parts.append(f"BYDAY={','.join(byday)}")
-            
-        if until:
-            # El formato UNTIL debe ser UTC sin separadores (AAAA MM DD T HH MM SS Z)
-            
-            # Obtener el final del día en el que termina la repetición
-            dt_until = datetime.datetime.combine(until, datetime.time(23, 59, 59))
-            
-            # Si start_datetime tiene zona horaria, necesitamos asignársela a dt_until
-            if start_datetime and start_datetime.tzinfo:
-                # ➡️ CORRECCIÓN AQUÍ: Usamos replace(tzinfo=...) y luego convertimos a UTC
-                tz = start_datetime.tzinfo
-                dt_until = dt_until.replace(tzinfo=tz).astimezone(datetime.timezone.utc) 
-            else:
-                # Si no hay zona horaria de inicio, asumimos UTC para UNTIL
-                dt_until = dt_until.replace(tzinfo=datetime.timezone.utc)
-
-            rrule_parts.append(f"UNTIL={dt_until.strftime('%Y%m%dT%H%M%SZ')}")
-
-        # Guardamos la cadena RRULE en el campo del modelo
-        cleaned_data['recurrence_rule'] = ";".join(rrule_parts)
-        
         return cleaned_data
-
+        
+    def save(self, commit=True):
+        """Asegura que los campos generados en clean se guarden correctamente."""
+        instance = super().save(commit=False)
+        
+        # Asignar los valores de los campos calculados
+        if 'start_datetime' in self.cleaned_data:
+            instance.start_datetime = self.cleaned_data['start_datetime']
+        if 'end_datetime' in self.cleaned_data:
+            instance.end_datetime = self.cleaned_data['end_datetime']
+        if 'recurrence_rule' in self.cleaned_data:
+            instance.recurrence_rule = self.cleaned_data['recurrence_rule']
+        
+        if commit:
+            instance.save()
+        return instance  
 
 class HorarioCitaAdmin(admin.ModelAdmin):
     form = HorarioCitaForm
+    
+    # Listado y búsqueda
     list_display = (
-        'medico', 'especialidad', 'turno', 'start_datetime', 'end_datetime', 
-        'get_recurrence_display', 'activo', 'domicilio'
+        'medico', 'especialidad', 'turno', 'get_fecha_inicio', 'get_hora_inicio',
+        'get_fecha_fin', 'get_hora_fin', 'get_recurrence_display', 'activo', 'domicilio',
+        'ver_agenda_button'
     )
     list_filter = ('activo', 'domicilio', 'especialidad', 'turno')
     search_fields = ('medico__Nombres_Medico', 'especialidad__Espacialidad_Medica')
-    raw_id_fields = ('medico', 'especialidad', 'turno')
+    autocomplete_fields = ('medico', 'turno')
     date_hierarchy = 'start_datetime'
     
     class Media:
-        js = ('js/admin/horariocita_admin.js',)
+        js = (
+            '//code.jquery.com/jquery-3.6.0.min.js',
+            '//cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/js/select2.min.js',
+            '//cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/js/i18n/es.js',
+            'citas/js/horario_admin.js',  # Archivo para la funcionalidad de dependencia entre médico y especialidad
+        )
         css = {
-            'all': ('css/admin/horariocita_admin.css',)
+            'all': (
+                '//cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/css/select2.min.css',
+            )
         }
-
+    
+    # Configuración del formulario
     fieldsets = (
-        ("Información del Horario", {
-            # Se usan tuplas para agrupar campos en una fila
+        ('Información Básica', {
             'fields': (
                 'medico', 
                 'especialidad', 
                 'turno', 
-                'start_datetime', 
-                'end_datetime', 
-                'domicilio', 
-                'activo',
+                'activo', 
+                'domicilio',
+                ('fecha_inicio', 'hora_inicio'),
+                ('fecha_fin', 'hora_fin')
             )
         }),
-        ("Configuración de Recurrencia (Opcional)", {
+        ('Configuración de Recurrencia (Opcional)', {
             'fields': (
                 'recurrence_frequency',
                 'recurrence_byday',
                 'recurrence_until',
             ),
-            'classes': ('wide',), 
+            'classes': ('wide', 'collapse'),
             'description': 'Define la regla de repetición del horario. Si deja en blanco, será un evento único.'
         }),
-       # ("Metadatos de Google Calendar", {
-       #     'fields': (
-       #         'calendar_event_id',
-       #         'calendar_id',
-       #         'recurrence_rule', 
-       #         'fecha_creacion',
-       #         'fecha_actualizacion',
-       #     ),
-       #     'classes': ('collapse',), 
-       # })
+        ('Regla de Recurrencia Almacenada', {
+            'fields': ('recurrence_rule',),
+            'classes': ('collapse',),
+        }),
     )
     
-    readonly_fields = ('calendar_event_id', 'calendar_id', 'recurrence_rule', 'fecha_creacion', 'fecha_actualizacion')
+    # Métodos para mostrar fechas y horas en la lista
+    def get_fecha_inicio(self, obj):
+        return obj.start_datetime.strftime('%d/%m/%Y') if obj.start_datetime else '-'
+    get_fecha_inicio.short_description = 'Fecha Inicio'
+    get_fecha_inicio.admin_order_field = 'start_datetime'
 
+    def get_hora_inicio(self, obj):
+        return obj.start_datetime.strftime('%H:%M') if obj.start_datetime else '-'
+    get_hora_inicio.short_description = 'Hora Inicio'
+    get_hora_inicio.admin_order_field = 'start_datetime'
+
+    def get_fecha_fin(self, obj):
+        return obj.end_datetime.strftime('%d/%m/%Y') if obj.end_datetime else '-'
+    get_fecha_fin.short_description = 'Fecha Fin'
+    get_fecha_fin.admin_order_field = 'end_datetime'
+
+    def get_hora_fin(self, obj):
+        return obj.end_datetime.strftime('%H:%M') if obj.end_datetime else '-'
+    get_hora_fin.short_description = 'Hora Fin'
+    get_hora_fin.admin_order_field = 'end_datetime'
+    
+    # Botón para ver agenda en la lista
+    def ver_agenda_button(self, obj):
+        if obj.medico_id:
+            try:
+                agenda_url = reverse('citas:agenda_medico')
+                return mark_safe(
+                    f'<a href="{agenda_url}" class="button" style="padding: 5px 10px; background: #417690; color: white; text-decoration: none; border-radius: 3px;">📅 Ver Agenda</a>'
+                )
+            except Exception as e:
+                print(f"Error generando URL de agenda: {e}")
+                return "URL no configurada"
+        return "-"
+    ver_agenda_button.short_description = 'Acciones'
+    ver_agenda_button.allow_tags = True
+    
+    # Cambios en el formulario de edición
+    change_form_template = 'citas/agenda/change_form.html'
+    
+    def change_view(self, request, object_id, form_url='', extra_context=None):
+        extra_context = extra_context or {}
+        obj = self.get_object(request, object_id)
+        
+        if obj and obj.medico_id:
+            try:
+                agenda_url = reverse('citas:agenda_medico')
+                extra_context['agenda_url'] = agenda_url
+                extra_context['medico_nombre'] = f"{obj.medico.Nombres_Medico} {obj.medico.Apellidos_Medicos}"
+            except Exception as e:
+                print(f"Error generando URL de agenda: {e}")
+        
+        return super().change_view(
+            request, object_id, form_url, extra_context=extra_context,
+        )
+    
     def get_recurrence_display(self, obj):
         """Muestra la regla de recurrencia de forma legible en la lista."""
         return obj.recurrence_rule if obj.recurrence_rule else 'Evento Único'
     get_recurrence_display.short_description = 'Repetición'
 
-
 class TurnoAdmin(admin.ModelAdmin):
     list_display = ('nombre', 'hora_inicio', 'hora_fin')
-    search_fields = ('nombre',)
+    search_fields = ('nombre', 'hora_inicio', 'hora_fin')
+    list_filter = ()
     ordering = ('hora_inicio',)
+    
+    class Media:
+        js = (
+            '//code.jquery.com/jquery-3.6.0.min.js',
+            '//cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/js/select2.min.js',
+            '//cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/js/i18n/es.js',
+            'citas/js/horario_admin.js',  # Archivo para la funcionalidad de dependencia entre médico y especialidad
+        )
+        css = {
+            'all': (
+                '//cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/css/select2.min.css',
+            )
+        }
 
 # ----------------------------------------------------
 # 3. DEFINICIONES DE MEDICO (UsuarioMedico) y ESPECIALIDAD
-#    (Se definen antes de MedicoEspecialidadAdmin para evitar NameError/Indexación)
 # ----------------------------------------------------
 
 class DatosSeniatInline(admin.StackedInline):
@@ -374,14 +504,12 @@ class MedicoEspecialidadAdmin(admin.ModelAdmin):
         'especialidad__Espacialidad_Medica'
     )
     list_select_related = ('medico', 'especialidad')
-    # ✅ CORRECCIÓN FINAL: raw_id_fields para evitar E039 con CustomAdminSite
-    raw_id_fields = ('medico', 'especialidad') 
+    raw_id_fields = ('medico', 'especialidad')
     list_per_page = 20
     
     def get_medico_nombre(self, obj):
         return f"{obj.medico.Nombres_Medico} {obj.medico.Apellidos_Medicos}"
     get_medico_nombre.short_description = 'Médico'
-
 
 # ----------------------------------------------------
 # 5. DEFINICIONES DE PACIENTE Y UBICACIÓN
@@ -459,14 +587,13 @@ class PacienteAdmin(admin.ModelAdmin):
     def get_form(self, request, obj=None, **kwargs):
         form = super().get_form(request, obj, **kwargs)
         if 'Pais' in form.base_fields:
-            form.base_fields['Pais'].initial = 1  
+            form.base_fields['Pais'].initial = 1 
         return form
     
     def save_model(self, request, obj, form, change):
         if not obj.Pais_id:
-            obj.Pais_id = 1  
+            obj.Pais_id = 1 
         super().save_model(request, obj, form, change)
-
 
 # Configuración para los modelos de ubicación geográfica
 class PaisAdmin(admin.ModelAdmin):
@@ -517,6 +644,7 @@ class BancoAdmin(admin.ModelAdmin):
     list_filter = ('Activo',)
     search_fields = ('Bancos', 'Codigo_Bancario')
     ordering = ('Bancos',)
+    
 # ----------------------------------------------------
 # 6. REGISTRO FINAL DE MODELOS EN admin_site
 # ----------------------------------------------------
@@ -528,30 +656,29 @@ try:
 except admin.sites.NotRegistered:
     pass
 
-# Registro en el CustomAdminSite (admin_site)
+# Registrar modelos en el CustomAdminSite (admin_site)
 admin_site.register(User, UserAdmin)
-admin_site.register(Group, GroupAdmin) 
+admin_site.register(Group, GroupAdmin)
 
 # Modelos de Apoyo
 admin_site.register(Prefijo_CIDNI)
 admin_site.register(Sexo)
 admin_site.register(EstadoCivil)
 
-# Modelos Principales
-admin_site.register(EspecialidadMedica, EspecialidadMedicaAdmin)
+# Registrar modelos con sus respectivas clases de administración
+admin_site.register(Turno, TurnoAdmin)
 admin_site.register(UsuarioMedico, UsuarioMedicoAdmin)
+admin_site.register(EspecialidadMedica, EspecialidadMedicaAdmin)
 admin_site.register(MedicoEspecialidad, MedicoEspecialidadAdmin)
 admin_site.register(Paciente, PacienteAdmin)
 admin_site.register(Consultorio, ConsultorioAdmin)
 admin_site.register(Banco, BancoAdmin)
-
-# Modelos de Horarios
-admin_site.register(HorarioCita, HorarioCitaAdmin)
-admin_site.register(Turno, TurnoAdmin)
-
-# Modelos Geográficos
 admin_site.register(Pais, PaisAdmin)
 admin_site.register(Estado, EstadoAdmin)
 admin_site.register(Ciudad, CiudadAdmin)
 admin_site.register(Municipio, MunicipioAdmin)
 admin_site.register(Parroquia, ParroquiaAdmin)
+
+# Verificar si el modelo ya está registrado antes de registrarlo
+if not admin_site.is_registered(HorarioCita):
+    admin_site.register(HorarioCita, HorarioCitaAdmin)

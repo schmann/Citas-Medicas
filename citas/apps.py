@@ -10,4 +10,5 @@ class CitasConfig(AppConfig):
     
     def ready(self):
         #ESTO ES CRUCIAL: Importar señales aquí para que se carguen.
-        import citas.signals
+        #import citas.signals
+        pass

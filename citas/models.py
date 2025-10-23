@@ -318,19 +318,30 @@ class Turno(models.Model):
     """
     id_Turno = models.AutoField(primary_key=True, db_column='id_Turno')
     nombre = models.CharField(max_length=100, verbose_name='Nombre del Turno')
-    hora_inicio = models.TimeField(verbose_name='Hora de Inicio')
-    hora_fin = models.TimeField(verbose_name='Hora de Fin')
+    hora_inicio = models.TimeField(
+        verbose_name='Hora de Inicio', 
+        null=True, 
+        blank=True,
+        help_text='Formato: HH:MM'
+    )
+    hora_fin = models.TimeField(
+        verbose_name='Hora de Fin', 
+        null=True, 
+        blank=True,
+        help_text='Formato: HH:MM'
+    )
     activo = models.BooleanField(default=True, verbose_name='¿Activo?')
     
     def __str__(self):
-        return f"{self.nombre} ({self.hora_inicio.strftime('%H:%M')} - {self.hora_fin.strftime('%H:%M')})"
+        if self.hora_inicio and self.hora_fin:
+            return f"{self.nombre} ({self.hora_inicio.strftime('%H:%M')} - {self.hora_fin.strftime('%H:%M')})"
+        return self.nombre
     
     class Meta:
         db_table = 'turnos'
         verbose_name = 'Turno'
         verbose_name_plural = 'Turnos'
-        ordering = ['hora_inicio']
-
+        ordering = ['nombre']
 
 class HorarioCita(models.Model):
     """
@@ -490,131 +501,7 @@ class DireccionPaciente(models.Model):
         try:
             return f"Dirección de {self.paciente}"
         except:
-             return f"Dirección ID {self.id_Direccion_Paciente}"
-
-# En tu archivo models.py de la app citas
-
-class Turno(models.Model):
-    """
-    Modelo para los turnos de atención médica
-    """
-    id_Turno = models.AutoField(primary_key=True, db_column='id_Turno')
-    nombre = models.CharField(max_length=100, verbose_name='Nombre del Turno')
-    hora_inicio = models.TimeField(
-        verbose_name='Hora de Inicio', 
-        null=True, 
-        blank=True,
-        help_text='Formato: HH:MM'
-    )
-    hora_fin = models.TimeField(
-        verbose_name='Hora de Fin', 
-        null=True, 
-        blank=True,
-        help_text='Formato: HH:MM'
-    )
-    activo = models.BooleanField(default=True, verbose_name='¿Activo?')
-    
-    def __str__(self):
-        if self.hora_inicio and self.hora_fin:
-            return f"{self.nombre} ({self.hora_inicio.strftime('%H:%M')} - {self.hora_fin.strftime('%H:%M')})"
-        return self.nombre
-    
-    class Meta:
-        db_table = 'turnos'
-        verbose_name = 'Turno'
-        verbose_name_plural = 'Turnos'
-        ordering = ['nombre']
-
-class HorarioCita(models.Model):
-    """
-    Modelo para los horarios de las citas médicas
-    """
-    medico = models.ForeignKey(
-        'citas.UsuarioMedico',
-        on_delete=models.CASCADE,
-        db_column='medico_id',
-        related_name='horarios_citas',
-        verbose_name='Médico'
-    )
-    
-    especialidad = models.ForeignKey(
-        'citas.EspecialidadMedica',
-        on_delete=models.CASCADE,
-        db_column='especialidad_id',
-        related_name='horarios_citas',
-        verbose_name='Especialidad Médica'
-    )
-    
-    turno = models.ForeignKey(
-        'citas.Turno',
-        on_delete=models.CASCADE,
-        db_column='turno_id',
-        related_name='horarios_citas',
-        verbose_name='Turno'
-    )
-    
-    domicilio = models.BooleanField(
-        default=False,
-        verbose_name='¿Atención a Domicilio?'
-    )
-    
-    calendar_event_id = models.CharField(
-        max_length=128,
-        blank=True,
-        null=True,
-        verbose_name='ID del Evento en el Calendario'
-    )
-    
-    calendar_id = models.CharField(
-        max_length=128,
-        blank=True,
-        null=True,
-        verbose_name='ID del Calendario'
-    )
-    
-    start_datetime = models.DateTimeField(
-        verbose_name='Fecha y Hora de Inicio'
-    )
-    
-    end_datetime = models.DateTimeField(
-        verbose_name='Fecha y Hora de Fin'
-    )
-    
-    recurrence_rule = models.CharField(
-        max_length=255,
-        blank=True,
-        null=True,
-        verbose_name='Regla de Recurrencia'
-    )
-    
-    activo = models.BooleanField(
-        default=True,
-        verbose_name='¿Activo?'
-    )
-    
-    fecha_creacion = models.DateTimeField(
-        auto_now_add=True,
-        verbose_name='Fecha de Creación'
-    )
-    
-    fecha_actualizacion = models.DateTimeField(
-        auto_now=True,
-        verbose_name='Última Actualización'
-    )
-    
-    def __str__(self):
-        return f"{self.medico} - {self.especialidad} - {self.start_datetime.strftime('%Y-%m-%d %H:%M')}"
-    
-    class Meta:
-        db_table = 'horarios_citas'
-        verbose_name = 'Horario de Cita'
-        verbose_name_plural = 'Horarios de Citas'
-        ordering = ['-start_datetime', 'medico']
-        indexes = [
-            models.Index(fields=['medico', 'especialidad']),
-            models.Index(fields=['start_datetime', 'end_datetime']),
-            models.Index(fields=['activo']),
-        ]
+            return f"Dirección ID {self.id_Direccion_Paciente}"
 
 class Banco(models.Model):
     """

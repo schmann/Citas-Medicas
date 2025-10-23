@@ -48,5 +48,15 @@ urlpatterns = [
     path('bancos/', views.BancoListView.as_view(), name='banco_list'),
     path('bancos/nuevo/', views.BancoCreateView.as_view(), name='banco_create'),
     path('bancos/editar/<int:pk>/', views.BancoUpdateView.as_view(), name='banco_update'),
+    
+    # API para obtener especialidades de un médico
+    path('api/get-especialidades/<int:medico_id>/', views.get_especialidades_medico, name='get_especialidades_medico'),
     path('bancos/eliminar/<int:pk>/', views.BancoDeleteView.as_view(), name='banco_delete'),
+
+    # AGREGAR ESTA RUTA PARA HORARIOS JSON
+    path('horarios-json/', views.horarios_json, name='horarios_json'),
+    
+    # O si ya tienes una ruta para agenda, verifica que esté así:
+    path('agenda/', views.agenda_medico, name='agenda_medico'),
+    
 ]

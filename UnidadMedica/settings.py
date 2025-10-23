@@ -12,6 +12,10 @@ https://docs.djangoproject.com/en/5.2/ref/settings/
 
 from pathlib import Path
 import os
+from dotenv import load_dotenv
+
+# Cargar variables de entorno desde .env
+load_dotenv()
 
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
@@ -21,12 +25,12 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 # See https://docs.djangoproject.com/en/5.2/howto/deployment/checklist/
 
 # SECURITY WARNING: keep the secret key used in production secret!
-SECRET_KEY = 'django-insecure--kk8_by0(=pz_y_k33gfx231bh!8owr+n76j=n$bggod93d7m2'
+SECRET_KEY = os.getenv('SECRET_KEY', 'django-insecure--kk8_by0(=pz_y_k33gfx231bh!8owr+n76j=n$bggod93d7m2')
 
 # SECURITY WARNING: don't run with debug turned on in production!
-DEBUG = True
+DEBUG = os.getenv('DEBUG', 'True') == 'True'
 
-ALLOWED_HOSTS = []
+ALLOWED_HOSTS = os.getenv('ALLOWED_HOSTS', '').split(',') if os.getenv('ALLOWED_HOSTS') else []
 
 
 # Application definition
@@ -75,8 +79,6 @@ MIDDLEWARE = [
 
 ROOT_URLCONF = 'UnidadMedica.urls'
 
-import os
-
 TEMPLATES = [
     {
         'BACKEND': 'django.template.backends.django.DjangoTemplates',
@@ -95,17 +97,37 @@ TEMPLATES = [
 WSGI_APPLICATION = 'UnidadMedica.wsgi.application'
 
 
+# Configuración de zona horaria
+TIME_ZONE = 'America/Caracas'
+USE_TZ = True
+
+# Configuración de formato de fechas
+DATE_INPUT_FORMATS = [
+    '%Y-%m-%d',  # '2006-10-25'
+    '%d/%m/%Y',  # '25/10/2006'
+    '%d/%m/%y',  # '25/10/06'
+]
+
+DATETIME_INPUT_FORMATS = [
+    '%Y-%m-%d %H:%M:%S',     # '2006-10-25 14:30:59'
+    '%Y-%m-%d %H:%M',        # '2006-10-25 14:30'
+    '%d/%m/%Y %H:%M:%S',     # '25/10/2006 14:30:59'
+    '%d/%m/%Y %H:%M',        # '25/10/2006 14:30'
+    '%d/%m/%y %H:%M:%S',     # '25/10/06 14:30:59'
+    '%d/%m/%y %H:%M',        # '25/10/06 14:30'
+]
+
 # Database
 # https://docs.djangoproject.com/en/5.2/ref/settings/#databases
 
 DATABASES = {
     'default': {
         'ENGINE': 'django.db.backends.postgresql',
-        'NAME': 'unidad_medica',
-        'USER': 'postgres',
-        'PASSWORD': 'Elvira123..',
-        'HOST': 'localhost',
-        'PORT': '5432',
+        'NAME': os.getenv('DB_NAME', 'unidad_medica'),
+        'USER': os.getenv('DB_USER', 'postgres'),
+        'PASSWORD': os.getenv('DB_PASSWORD', ''),
+        'HOST': os.getenv('DB_HOST', 'localhost'),
+        'PORT': os.getenv('DB_PORT', '5432'),
         'OPTIONS': {
             'options': '-c search_path=public',
             'client_encoding': 'UTF8',
@@ -115,7 +137,6 @@ DATABASES = {
         'DISABLE_SERVER_SIDE_CURSORS': True,
     }
 }
-
 
 
 # Password validation
