@@ -1,0 +1,517 @@
+{% extends "admin/base_site.html" %}
+{% load static %}
+
+{% block extrastyle %}
+{{ block.super }}
+<link href='https://cdn.jsdelivr.net/npm/fullcalendar@5.11.3/main.min.css' rel='stylesheet' />
+<style>
+    .fc-event {
+        cursor: pointer;
+        padding: 2px 4px;
+        border-radius: 3px;
+        font-size: 0.85em;
+        margin-bottom: 1px;
+    }
+    .fc-event-title {
+        white-space: normal;
+        font-weight: normal;
+    }
+    .fc-daygrid-event-dot {
+        display: none;
+    }
+    .container-fluid {
+        padding: 20px;
+    }
+    .card {
+        margin-top: 20px;
+        border: 1px solid #ddd;
+        border-radius: 4px;
+        box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+    }
+    .card-body {
+        padding: 20px;
+    }
+    /* Estilos para el modal */
+    .modal {
+        display: none;
+        position: fixed;
+        z-index: 99999 !important;
+        left: 0;
+        top: 0;
+        width: 100%;
+        height: 100%;
+        background-color: rgba(0,0,0,0.7);
+        overflow: auto;
+        justify-content: center;
+        align-items: flex-start;
+        padding-top: 50px;
+    }
+    .modal-dialog {
+        background-color: #fff;
+        width: 90%;
+        max-width: 800px;
+        border-radius: 8px;
+        box-shadow: 0 5px 25px rgba(0,0,0,0.3);
+        margin: 20px auto;
+        position: relative;
+        z-index: 100000;
+    }
+    .modal-header {
+        padding: 10px 15px;
+        background-color: #f8f9fa;
+        border-bottom: 1px solid #dee2e6;
+        border-radius: 5px 5px 0 0;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+    }
+    .modal-body {
+        padding: 20px;
+    }
+    .modal-footer {
+        padding: 10px 15px;
+        background-color: #f8f9fa;
+        border-top: 1px solid #dee2e6;
+        border-radius: 0 0 5px 5px;
+        text-align: right;
+    }
+    .btn {
+        padding: 6px 12px;
+        border: 1px solid #ccc;
+        border-radius: 4px;
+        background-color: #f8f9fa;
+        cursor: pointer;
+    }
+    .btn-secondary {
+        background-color: #6c757d;
+        color: white;
+        border-color: #6c757d;
+    }
+    .close {
+        font-size: 1.5em;
+        cursor: pointer;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <div class="row" style="margin-bottom: 20px;">
+        <div class="col-12">
+            <div style="display: flex; justify-content: space-between; align-items: center;">
+                <h2 style="margin: 0;">Calendario de Citas</h2>
+                <div style="display: flex; gap: 10px;">
+                    <button id="nuevaCitaBtn" class="btn btn-primary" style="padding: 8px 16px; background: #007bff; color: white; border: none; border-radius: 4px; cursor: pointer;" onclick="mostrarNuevaCitaModal()">
+                        <i class="fas fa-plus"></i> Nueva Cita
+                    </button>
+                    <button id="testModalBtn" class="btn btn-secondary" style="padding: 8px 16px; background: #6c757d; color: white; border: none; border-radius: 4px; cursor: pointer;">
+                        <i class="fas fa-vial"></i> Probar Modal
+                    </button>
+                    <button id="addTestEventBtn" class="btn btn-success" style="padding: 8px 16px; background: #28a745; color: white; border: none; border-radius: 4px; cursor: pointer;">
+                        <i class="fas fa-flask"></i> Evento de Prueba
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <div class="card">
+        <div class="card-body">
+            <div id="calendar"></div>
+        </div>
+    </div>
+</div>
+
+<!-- Modal Container -->
+<div id="citaModal" style="display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.7); z-index: 9999; overflow-y: auto;">
+    <div style="position: relative; min-height: 100%; display: flex; align-items: flex-start; justify-content: center; padding: 20px 0;">
+        <div style="background: white; margin: 20px; padding: 20px; width: 90%; max-width: 600px; border-radius: 8px; box-shadow: 0 4px 8px rgba(0,0,0,0.2);">
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px; padding-bottom: 10px; border-bottom: 1px solid #eee;">
+                <h4 style="margin: 0; color: #333;" id="citaModalTitle">Detalles de la Cita</h4>
+                <button id="closeModalBtn" style="background: none; border: none; font-size: 24px; cursor: pointer; color: #666; line-height: 1;">&times;</button>
+            </div>
+            <div id="citaModalBody" style="margin-bottom: 20px; line-height: 1.6; color: #333;">
+                <p>Cargando detalles de la cita...</p>
+            </div>
+            <div style="text-align: right; padding-top: 10px; border-top: 1px solid #eee;">
+                <button id="closeModalBtnBottom" style="padding: 8px 20px; background: #6c757d; color: white; border: none; border-radius: 4px; cursor: pointer; font-size: 14px;">
+                    Cerrar
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extrajs %}
+{{ block.super }}
+<script src='https://cdn.jsdelivr.net/npm/fullcalendar@5.11.3/main.min.js'></script>
+<script src='https://cdn.jsdelivr.net/npm/fullcalendar@5.11.3/locales/es.js'></script>
+<script>
+// Variables globales
+let calendar;
+
+// Funciones globales para el modal
+window.showModal = function() {
+    console.log('Mostrando modal...');
+    const modal = document.getElementById('citaModal');
+    if (modal) {
+        console.log('Modal encontrado, mostrando...');
+        modal.style.display = 'block';
+        document.body.style.overflow = 'hidden';
+        console.log('Modal mostrado');
+        return true;
+    } else {
+        console.error('No se encontró el elemento del modal');
+        return false;
+    }
+};
+
+window.closeModal = function() {
+    console.log('Cerrando modal...');
+    const modal = document.getElementById('citaModal');
+    if (modal) {
+        modal.style.display = 'none';
+        document.body.style.overflow = 'auto';
+        console.log('Modal cerrado');
+    }
+};
+
+// Inicializar manejadores de eventos del modal
+function initModalHandlers() {
+    console.log('Inicializando manejadores del modal...');
+    const modal = document.getElementById('citaModal');
+    if (!modal) {
+        console.error('No se pudo encontrar el modal');
+        return;
+    }
+    
+    // Cerrar al hacer clic en los botones de cerrar
+    document.getElementById('closeModalBtn').addEventListener('click', window.closeModal);
+    document.getElementById('closeModalBtnBottom').addEventListener('click', window.closeModal);
+    
+    // Cerrar al hacer clic fuera del contenido
+    modal.addEventListener('click', function(event) {
+        if (event.target === modal) {
+            window.closeModal();
+        }
+    });
+    
+    // Cerrar con la tecla ESC
+    document.addEventListener('keydown', function(event) {
+        if (event.key === 'Escape') {
+            window.closeModal();
+        }
+    });
+    
+    console.log('Manejadores del modal inicializados');
+}
+
+// Función para mostrar el modal de nueva cita
+function mostrarNuevaCitaModal() {
+    console.log('Mostrando modal de nueva cita...');
+    
+    // Crear el formulario de nueva cita
+    const formContent = `
+        <div style="margin-bottom: 15px;">
+            <h5 style="margin-bottom: 20px; color: #333;">Nueva Cita</h5>
+            <form id="nuevaCitaForm">
+                <div class="form-group" style="margin-bottom: 15px;">
+                    <label for="pacienteSelect" style="display: block; margin-bottom: 5px; font-weight: 500;">Paciente</label>
+                    <select id="pacienteSelect" class="form-control" required style="width: 100%; padding: 8px; border: 1px solid #ddd; border-radius: 4px;">
+                        <option value="">Seleccione un paciente</option>
+                        {% for paciente in pacientes %}
+                        <option value="{{ paciente.id }}">{{ paciente.Nombres_Paciente }} {{ paciente.Apellidos_Paciente }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+                
+                <div class="form-group" style="margin-bottom: 15px;">
+                    <label for="medicoSelect" style="display: block; margin-bottom: 5px; font-weight: 500;">Médico</label>
+                    <select id="medicoSelect" class="form-control" required style="width: 100%; padding: 8px; border: 1px solid #ddd; border-radius: 4px;">
+                        <option value="">Seleccione un médico</option>
+                        {% for medico in medicos %}
+                        <option value="{{ medico.id }}">{{ medico.Nombres_Medico }} {{ medico.Apellidos_Medicos }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+                
+                <div class="form-group" style="margin-bottom: 15px;">
+                    <label for="especialidadSelect" style="display: block; margin-bottom: 5px; font-weight: 500;">Especialidad</label>
+                    <select id="especialidadSelect" class="form-control" required style="width: 100%; padding: 8px; border: 1px solid #ddd; border-radius: 4px;">
+                        <option value="">Seleccione una especialidad</option>
+                        {% for especialidad in especialidades %}
+                        <option value="{{ especialidad.id }}">{{ especialidad.Espacialidad_Medica }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+                
+                <div class="form-group" style="margin-bottom: 15px;">
+                    <label for="fechaHora" style="display: block; margin-bottom: 5px; font-weight: 500;">Fecha y Hora</label>
+                    <input type="datetime-local" id="fechaHora" class="form-control" required style="width: 100%; padding: 8px; border: 1px solid #ddd; border-radius: 4px;">
+                </div>
+                
+                <div class="form-group" style="margin-bottom: 20px;">
+                    <label for="duracion" style="display: block; margin-bottom: 5px; font-weight: 500;">Duración (minutos)</label>
+                    <input type="number" id="duracion" class="form-control" value="30" min="15" step="15" style="width: 100%; padding: 8px; border: 1px solid #ddd; border-radius: 4px;">
+                </div>
+                
+                <div class="form-group" style="margin-bottom: 20px;">
+                    <label for="notas" style="display: block; margin-bottom: 5px; font-weight: 500;">Notas</label>
+                    <textarea id="notas" rows="3" class="form-control" style="width: 100%; padding: 8px; border: 1px solid #ddd; border-radius: 4px;"></textarea>
+                </div>
+                
+                <div style="display: flex; justify-content: flex-end; gap: 10px; margin-top: 20px;">
+                    <button type="button" class="btn btn-secondary" onclick="window.closeModal()" style="padding: 8px 16px; background: #6c757d; color: white; border: none; border-radius: 4px; cursor: pointer;">
+                        Cancelar
+                    </button>
+                    <button type="submit" class="btn btn-primary" style="padding: 8px 20px; background: #007bff; color: white; border: none; border-radius: 4px; cursor: pointer;">
+                        <i class="fas fa-save"></i> Guardar Cita
+                    </button>
+                </div>
+            </form>
+        </div>
+    `;
+    
+    // Actualizar el contenido del modal
+    const modalBody = document.getElementById('citaModalBody');
+    const modalTitle = document.getElementById('citaModalTitle');
+    
+    if (modalBody && modalTitle) {
+        modalTitle.textContent = 'Nueva Cita';
+        modalBody.innerHTML = formContent;
+        
+        // Configurar el formulario
+        const form = document.getElementById('nuevaCitaForm');
+        if (form) {
+            form.addEventListener('submit', function(e) {
+                e.preventDefault();
+                guardarNuevaCita();
+            });
+        }
+        
+        // Mostrar el modal
+        window.showModal();
+    } else {
+        console.error('No se pudo encontrar el cuerpo o título del modal');
+    }
+}
+
+// Función para guardar una nueva cita
+async function guardarNuevaCita() {
+    const formData = {
+        paciente_id: document.getElementById('pacienteSelect').value,
+        medico_id: document.getElementById('medicoSelect').value,
+        especialidad_id: document.getElementById('especialidadSelect').value,
+        fecha_hora: document.getElementById('fechaHora').value,
+        duracion: document.getElementById('duracion').value,
+        notas: document.getElementById('notas').value,
+        estado: 'Pendiente'
+    };
+    
+    // Validar campos requeridos
+    if (!formData.paciente_id || !formData.medico_id || !formData.especialidad_id || !formData.fecha_hora) {
+        alert('Por favor complete todos los campos requeridos');
+        return;
+    }
+    
+    try {
+        const response = await fetch('/citas/api/crear_cita/', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-CSRFToken': '{{ csrf_token }}'
+            },
+            body: JSON.stringify(formData)
+        });
+        
+        const result = await response.json();
+        
+        if (response.ok) {
+            // Mostrar mensaje de éxito
+            const modalBody = document.getElementById('citaModalBody');
+            if (modalBody) {
+                modalBody.innerHTML = `
+                    <div style="text-align: center; padding: 20px 0;">
+                        <i class="fas fa-check-circle" style="font-size: 48px; color: #28a745; margin-bottom: 15px;"></i>
+                        <h4 style="color: #28a745;">¡Cita creada exitosamente!</h4>
+                        <p>La cita ha sido agendada correctamente.</p>
+                    </div>
+                `;
+                
+                // Cerrar el modal después de 2 segundos
+                setTimeout(() => {
+                    window.closeModal();
+                    // Recargar el calendario
+                    if (calendar) {
+                        calendar.refetchEvents();
+                    }
+                }, 2000);
+            }
+        } else {
+            throw new Error(result.error || 'Error al guardar la cita');
+        }
+    } catch (error) {
+        console.error('Error al guardar la cita:', error);
+        alert('Error al guardar la cita: ' + error.message);
+    }
+}
+
+// Inicializar cuando el DOM esté listo
+document.addEventListener('DOMContentLoaded', function() {
+    console.log('DOM cargado, inicializando...');
+    initModalHandlers();
+    
+    // Configurar botones de prueba
+    document.getElementById('testModalBtn').addEventListener('click', testModal);
+    document.getElementById('addTestEventBtn').addEventListener('click', addTestEvent);
+    
+    // Inicializar el calendario
+    const calendarEl = document.getElementById('calendar');
+    if (calendarEl) {
+        calendar = new FullCalendar.Calendar(calendarEl, {
+            initialView: 'dayGridMonth',
+            locale: 'es',
+            headerToolbar: {
+                left: 'prev,next today',
+                center: 'title',
+                right: 'dayGridMonth,timeGridWeek,timeGridDay'
+            },
+            buttonText: {
+                today: 'Hoy',
+                month: 'Mes',
+                week: 'Semana',
+                day: 'Día'
+            },
+            events: '/citas/api/eventos/',
+            eventClick: function(info) {
+                const event = info.event;
+                const extendedProps = event.extendedProps;
+                
+                // Crear el contenido del modal
+                const modalContent = `
+                    <div style="margin-bottom: 15px;">
+                        <h4 style="margin-bottom: 15px; color: #333; border-bottom: 1px solid #eee; padding-bottom: 10px;">Detalles de la Cita</h4>
+                        <p style="margin: 5px 0;"><strong>Paciente:</strong> ${extendedProps.paciente || 'No especificado'}</p>
+                        <p style="margin: 5px 0;"><strong>Médico:</strong> ${extendedProps.medico || 'No especificado'}</p>
+                        <p style="margin: 5px 0;"><strong>Especialidad:</strong> ${extendedProps.especialidad || 'No especificada'}</p>
+                        <p style="margin: 5px 0;"><strong>Fecha y Hora:</strong> ${event.start ? event.start.toLocaleString('es-ES') : 'No especificada'}</p>
+                        <p style="margin: 5px 0;"><strong>Duración:</strong> ${extendedProps.duracion || '30'} minutos</p>
+                        <p style="margin: 5px 0;"><strong>Estado:</strong> <span style="color: ${extendedProps.estado === 'Confirmada' ? '#28a745' : extendedProps.estado === 'Cancelada' ? '#dc3545' : '#ffc107'}">${extendedProps.estado || 'Pendiente'}</span></p>
+                        ${extendedProps.notas ? `<p style="margin: 15px 0 0; padding-top: 10px; border-top: 1px solid #eee;"><strong>Notas:</strong> ${extendedProps.notas}</p>` : ''}
+                    </div>
+                    <div style="display: flex; justify-content: flex-end; margin-top: 20px;">
+                        <button id="editarCitaBtn" class="btn btn-primary" style="padding: 8px 16px; background: #007bff; color: white; border: none; border-radius: 4px; cursor: pointer; margin-right: 10px;">
+                            <i class="fas fa-edit"></i> Editar
+                        </button>
+                        <button id="cancelarCitaBtn" class="btn btn-danger" style="padding: 8px 16px; background: #dc3545; color: white; border: none; border-radius: 4px; cursor: pointer;">
+                            <i class="fas fa-times"></i> Cancelar Cita
+                        </button>
+                    </div>
+                `;
+                
+                // Actualizar el contenido del modal
+                const modalBody = document.getElementById('citaModalBody');
+                const modalTitle = document.getElementById('citaModalTitle');
+                
+                if (modalBody && modalTitle) {
+                    modalTitle.textContent = 'Detalles de la Cita';
+                    modalBody.innerHTML = modalContent;
+                    
+                    // Configurar botones del modal
+                    document.getElementById('editarCitaBtn').addEventListener('click', function() {
+                        alert('Función de edición no implementada aún');
+                    });
+                    
+                    document.getElementById('cancelarCitaBtn').addEventListener('click', function() {
+                        if (confirm('¿Está seguro de que desea cancelar esta cita?')) {
+                            // Aquí iría la lógica para cancelar la cita
+                            alert('Cita cancelada (función no implementada)');
+                            window.closeModal();
+                        }
+                    });
+                    
+                    // Mostrar el modal
+                    window.showModal();
+                }
+            }
+        });
+        
+        // Asignar la instancia del calendario a la variable global
+        window.calendar = calendar;
+        
+        // Renderizar el calendario
+        calendar.render();
+        console.log('Calendario inicializado');
+    } else {
+        console.error('No se pudo encontrar el elemento del calendario');
+    }
+});
+
+// Función para probar el modal
+function testModal() {
+    console.log('Probando modal...');
+    const modalBody = document.getElementById('citaModalBody');
+    if (modalBody) {
+        modalBody.innerHTML = `
+            <div style="margin-bottom: 10px;">
+                <p style="margin: 5px 0; font-size: 15px;"><strong>Prueba de Modal</strong></p>
+                <p style="margin: 5px 0; font-size: 15px;">Si puedes ver este mensaje, el modal funciona correctamente.</p>
+                <p style="margin: 5px 0; font-size: 15px;">El problema podría estar en la interacción con el calendario.</p>
+            </div>
+        `;
+        const result = window.showModal();
+        console.log('Resultado de showModal():', result);
+    } else {
+        console.error('No se pudo encontrar el cuerpo del modal');
+    }
+}
+
+// Función para agregar un evento de prueba
+function addTestEvent() {
+    if (!calendar) {
+        console.error('El calendario no está inicializado');
+        return;
+    }
+    
+    console.log('Agregando evento de prueba...');
+    
+    // Crear un evento de prueba
+    const today = new Date();
+    const event = {
+        title: 'Cita de Prueba',
+        start: today,
+        end: new Date(today.getTime() + (60 * 60 * 1000)), // 1 hora después
+        extendedProps: {
+            paciente: 'Paciente de Prueba',
+            medico: 'Dr. Ejemplo',
+            especialidad: 'Medicina General',
+            estado: 'Pendiente',
+            nota: 'Esta es una cita de prueba',
+            duracion: 60
+        },
+        backgroundColor: '#28a745',
+        borderColor: '#218838',
+        textColor: '#ffffff'
+    };
+    
+    // Agregar el evento al calendario
+    calendar.addEvent(event);
+    
+    // Mostrar mensaje de éxito
+    const modalBody = document.getElementById('citaModalBody');
+    if (modalBody) {
+        modalBody.innerHTML = `
+            <div style="margin-bottom: 10px;">
+                <p>Se ha agregado un evento de prueba al calendario.</p>
+                <p>Haz clic en el evento para ver sus detalles.</p>
+                <p>Fecha: ${today.toLocaleString('es-ES')}</p>
+            </div>
+        `;
+        window.showModal();
+    }
+    
+    console.log('Evento de prueba agregado');
+}
+</script>
+{% endblock %}

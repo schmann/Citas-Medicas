@@ -520,3 +520,177 @@ class Banco(models.Model):
 
     def __str__(self):
         return self.Bancos or 'Sin nombre de banco'
+
+class CitasReservadas(models.Model):
+    ESTADO_OPCIONES = [
+        ('pendiente', 'Pendiente'),
+        ('confirmada', 'Confirmada'),
+        ('completada', 'Completada'),
+        ('cancelada', 'Cancelada'),
+        ('no_asistio', 'No Asistió'),
+    ]
+
+    horario = models.ForeignKey(
+        'citas.HorarioCita',  # Cambiado de 'HorariosCitas' a 'HorarioCita'
+        on_delete=models.CASCADE,
+        related_name='citas_reservadas'
+    )
+    paciente = models.ForeignKey(
+        'citas.Paciente',  # Asegúrate de que 'citas' sea el nombre correcto de la app
+        on_delete=models.CASCADE,
+        related_name='citas_reservadas'
+    )
+    calendar_event_id = models.CharField(
+        max_length=255,
+        null=True,
+        blank=True,
+        help_text='ID del evento en Google Calendar'
+    )
+    start_datetime = models.DateTimeField(
+        help_text='Hora de inicio de la cita'
+    )
+    end_datetime = models.DateTimeField(
+        help_text='Hora de fin de la cita'
+    )
+    estado = models.CharField(
+        max_length=20,
+        choices=ESTADO_OPCIONES,
+        default='pendiente',
+        help_text='Estado actual de la cita'
+    )
+    nota = models.TextField(
+        null=True,
+        blank=True,
+        help_text='Notas adicionales sobre la cita'
+    )
+    costo = models.DecimalField(
+        max_digits=10,
+        decimal_places=2,
+        null=True,
+        blank=True,
+        help_text='Costo de la consulta'
+    )
+    created_at = models.DateTimeField(
+        auto_now_add=True,
+        help_text='Fecha y hora de creación del registro'
+    )
+
+    class Meta:
+        db_table = 'citas_reservadas'
+        verbose_name = 'Cita Reservada'
+        verbose_name_plural = 'Citas Reservadas'
+        ordering = ['start_datetime']
+
+    def __str__(self):
+        return f'Cita de {self.paciente} - {self.start_datetime}'
+
+    def save(self, *args, **kwargs):
+        # Validar que la fecha de fin sea posterior a la de inicio
+        if self.end_datetime <= self.start_datetime:
+            raise ValueError('La hora de fin debe ser posterior a la hora de inicio')
+        super().save(*args, **kwargs)
+
+    @property
+    def duracion(self):
+        """Devuelve la duración de la cita en minutos"""
+        if self.start_datetime and self.end_datetime:
+            return (self.end_datetime - self.start_datetime).seconds // 60
+        return 0
+
+
+class Cita(models.Model):
+    """
+    Modelo para gestionar las citas médicas
+    """
+    ESTADOS = (
+        ('Pendiente', 'Pendiente'),
+        ('Confirmada', 'Confirmada'),
+        ('Completada', 'Completada'),
+        ('Cancelada', 'Cancelada'),
+        ('No Asistió', 'No Asistió'),
+    )
+    
+    paciente = models.ForeignKey(
+        'Paciente',
+        on_delete=models.CASCADE,
+        related_name='citas_paciente',
+        verbose_name='Paciente'
+    )
+    
+    medico = models.ForeignKey(
+        'UsuarioMedico',
+        on_delete=models.CASCADE,
+        related_name='citas_medico',
+        verbose_name='Médico'
+    )
+    
+    especialidad = models.ForeignKey(
+        'EspecialidadMedica',
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        verbose_name='Especialidad Médica'
+    )
+    
+    fecha_hora = models.DateTimeField('Fecha y Hora de la Cita')
+    duracion = models.PositiveIntegerField('Duración (minutos)', default=60)
+    notas = models.TextField('Notas', blank=True, null=True)
+    estado = models.CharField(
+        'Estado',
+        max_length=20,
+        choices=ESTADOS,
+        default='Pendiente'
+    )
+    
+    # Relación con el horario si es necesario
+    horario = models.ForeignKey(
+        'HorarioCita',
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name='citas_asociadas',
+        verbose_name='Horario Asociado'
+    )
+    
+    # Campos de auditoría
+    creado_por = models.ForeignKey(
+        'auth.User',
+        on_delete=models.SET_NULL,
+        null=True,
+        related_name='citas_creadas',
+        verbose_name='Creado por'
+    )
+    
+    creado_el = models.DateTimeField('Fecha de Creación', auto_now_add=True)
+    actualizado_el = models.DateTimeField('Última Actualización', auto_now=True)
+
+    class Meta:
+        verbose_name = 'Cita Médica'
+        verbose_name_plural = 'Citas Médicas'
+        ordering = ['fecha_hora']
+        indexes = [
+            models.Index(fields=['fecha_hora']),
+            models.Index(fields=['estado']),
+        ]
+
+    def __str__(self):
+        return f"Cita #{self.id} - {self.paciente} con {self.medico} - {self.fecha_hora}"
+    
+    @property
+    def fecha(self):
+        return self.fecha_hora.date()
+    
+    @property
+    def hora_inicio(self):
+        return self.fecha_hora.time()
+    
+    @property
+    def hora_fin(self):
+        if self.fecha_hora and self.duracion:
+            return (datetime.combine(datetime.min, self.hora_inicio) + timedelta(minutes=self.duracion)).time()
+        return None
+    
+    def save(self, *args, **kwargs):
+        # Actualizar la fecha de actualización
+        self.actualizado_el = timezone.now()
+        super().save(*args, **kwargs)

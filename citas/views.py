@@ -25,6 +25,11 @@ from dateutil import rrule # Importar rrule
 from datetime import datetime, timedelta  # ✅ Agregar timedelta
 import pytz
 from django.contrib.admin.views.decorators import staff_member_required
+from django.views.decorators.csrf import csrf_exempt
+from django.http import JsonResponse
+from django.db import transaction
+from django.core import serializers
+import json
 
 # -------------------------------------------------------------
 # VISTAS PRINCIPALES
@@ -359,10 +364,200 @@ class BancoDeleteView(DeleteView):
 # -------------------------------------------------------------
 # VISTAS DE AGENDA Y CALENDARIO
 # -------------------------------------------------------------
-@staff_member_required(login_url=reverse_lazy('admin:login'))
+
+def calendario_view(request):
+    from .models import Paciente, UsuarioMedico, EspecialidadMedica, Cita
+    import json
+    from datetime import timedelta
+    
+    # Obtener datos básicos para el formulario
+    pacientes = Paciente.objects.filter(Activo=True).order_by('Apellidos_Paciente', 'Nombres_Paciente')
+    medicos = UsuarioMedico.objects.filter(activo=True).order_by('Apellidos_Medicos', 'Nombres_Medico')
+    especialidades = EspecialidadMedica.objects.all().order_by('Espacialidad_Medica')
+    
+    # Obtener citas para el calendario
+    citas = Cita.objects.select_related('paciente', 'medico', 'especialidad').all()
+    
+    # Preparar los eventos para el calendario
+    eventos = []
+    for cita in citas:
+        eventos.append({
+            'id': cita.id,
+            'title': f"{cita.paciente.Nombres_Paciente} {cita.paciente.Apellidos_Paciente}",
+            'start': cita.fecha_hora.isoformat(),
+            'end': (cita.fecha_hora + timedelta(minutes=cita.duracion)).isoformat(),
+            'estado': cita.estado,
+            'paciente': f"{cita.paciente.Nombres_Paciente} {cita.paciente.Apellidos_Paciente}",
+            'medico': f"{cita.medico.Nombres_Medico} {cita.medico.Apellidos_Medicos}",
+            'especialidad': cita.especialidad.Espacialidad_Medica if cita.especialidad else '',
+            'notas': cita.notas or '',
+            'color': get_estado_color(cita.estado)
+        })
+    
+    # Convertir a JSON seguro para JavaScript
+    eventos_json = json.dumps(eventos, ensure_ascii=False)
+    
+    context = {
+        'pacientes': pacientes,
+        'medicos': medicos,
+        'especialidades': especialidades,
+        'eventos_json': eventos_json,
+        'opts': {'app_label': 'citas'},
+        'is_popup': False,
+        'has_permission': True,
+        'site_url': '/',
+        'site_title': 'Calendario',
+        'title': 'Calendario de Citas'
+    }
+    
+    return render(request, 'citas/reservas/calendario.html', context)
+
+@csrf_exempt
+def crear_cita(request):
+    """
+    Vista para crear una nueva cita en la tabla citas_reservadas.
+    """
+    if request.method != 'POST':
+        return JsonResponse({'error': 'Método no permitido'}, status=405)
+    
+    try:
+        # Imprimir el cuerpo de la solicitud para depuración
+        print("Cuerpo de la solicitud:", request.body)
+        
+        data = json.loads(request.body)
+        print("Datos recibidos:", data)
+        
+        # Validar datos requeridos
+        required_fields = ['paciente_id', 'medico_id', 'especialidad_id', 'fecha_hora', 'duracion']
+        if not all(field in data for field in required_fields):
+            return JsonResponse({'error': 'Faltan campos requeridos'}, status=400)
+        
+        from datetime import datetime, timedelta
+        from django.utils import timezone
+        from .models import CitasReservadas, HorarioCita, Paciente, UsuarioMedico, EspecialidadMedica
+        
+        # Obtener los objetos relacionados
+        try:
+            paciente = Paciente.objects.get(id_Paciente=data['paciente_id'])
+            medico = UsuarioMedico.objects.get(id_Medico=data['medico_id'])
+            especialidad = EspecialidadMedica.objects.get(id_Especialidad_Medica=data['especialidad_id'])
+        except (Paciente.DoesNotExist, UsuarioMedico.DoesNotExist, EspecialidadMedica.DoesNotExist) as e:
+            return JsonResponse({'error': f'Error al obtener datos: {str(e)}'}, status=400)
+        
+        # Convertir la fecha y hora de string a objeto datetime
+        try:
+            fecha_hora = timezone.make_aware(datetime.strptime(data['fecha_hora'], '%Y-%m-%dT%H:%M'))
+            duracion = int(data['duracion'])
+            fecha_hora_fin = fecha_hora + timedelta(minutes=duracion)
+        except (ValueError, TypeError) as e:
+            return JsonResponse({'error': f'Formato de fecha o duración inválido: {str(e)}'}, status=400)
+        
+        # Crear el horario de cita si no existe
+        horario, created = HorarioCita.objects.get_or_create(
+            medico=medico,
+            especialidad=especialidad,
+            defaults={
+                'start_datetime': fecha_hora,
+                'end_datetime': fecha_hora_fin,
+                'activo': True
+            }
+        )
+        
+        # Crear la cita reservada
+        cita = CitasReservadas.objects.create(
+            horario=horario,
+            paciente=paciente,
+            start_datetime=fecha_hora,
+            end_datetime=fecha_hora_fin,
+            estado='pendiente',
+            nota=data.get('notas', ''),
+            costo=data.get('costo')
+        )
+        
+        print(f"Cita creada exitosamente - ID: {cita.id}, Paciente: {paciente.Nombres_Paciente}, Médico: {medico.Nombres_Medico}")
+        
+        return JsonResponse({
+            'success': True,
+            'cita_id': cita.id,
+            'message': 'Cita creada exitosamente',
+            'data': {
+                'paciente': f"{paciente.Nombres_Paciente} {paciente.Apellidos_Paciente}",
+                'medico': f"{medico.Nombres_Medico} {medico.Apellidos_Medicos}",
+                'especialidad': str(especialidad.Espacialidad_Medica),
+                'fecha_hora': fecha_hora.strftime('%Y-%m-%d %H:%M'),
+                'duracion': duracion,
+                'estado': 'pendiente'
+            }
+        })
+        
+    except Exception as e:
+        import traceback
+        error_trace = traceback.format_exc()
+        print(f"Error al crear la cita: {str(e)}\n{error_trace}")
+        return JsonResponse({
+            'error': 'Error al crear la cita',
+            'details': str(e),
+            'trace': error_trace if settings.DEBUG else None
+        }, status=500)
+
+def obtener_eventos(request):
+    """
+    Vista para obtener los eventos del calendario en formato JSON.
+    """
+    from .models import Cita
+    
+    try:
+        # Obtener parámetros de filtrado (opcional)
+        start = request.GET.get('start')
+        end = request.GET.get('end')
+        
+        # Construir el queryset base
+        queryset = Cita.objects.select_related('paciente', 'medico__usuario', 'especialidad')
+        
+        # Filtrar por rango de fechas si se proporciona
+        if start and end:
+            queryset = queryset.filter(
+                fecha_hora__gte=start,
+                fecha_hora__lte=end
+            )
+        
+        # Convertir a formato FullCalendar
+        eventos = []
+        for cita in queryset:
+            eventos.append({
+                'id': cita.id,
+                'title': f"{cita.paciente.nombres} {cita.paciente.apellidos}",
+                'start': cita.fecha_hora.isoformat(),
+                'end': (cita.fecha_hora + datetime.timedelta(minutes=cita.duracion)).isoformat(),
+                'extendedProps': {
+                    'paciente': f"{cita.paciente.nombres} {cita.paciente.apellidos}",
+                    'medico': cita.medico.usuario.get_full_name() if cita.medico.usuario else str(cita.medico),
+                    'especialidad': cita.especialidad.nombre if cita.especialidad else '',
+                    'estado': cita.estado,
+                    'notas': cita.notas or '',
+                },
+                'color': get_estado_color(cita.estado),
+                'textColor': '#ffffff'
+            })
+        
+        return JsonResponse(eventos, safe=False)
+        
+    except Exception as e:
+        return JsonResponse({'error': str(e)}, status=500)
+
+def get_estado_color(estado):
+    """Devuelve un color según el estado de la cita"""
+    colores = {
+        'Pendiente': '#ffc107',  # Amarillo
+        'Confirmada': '#28a745',  # Verde
+        'Cancelada': '#dc3545',   # Rojo
+        'Completada': '#17a2b8',  # Azul claro
+    }
+    return colores.get(estado, '#6c757d')  # Gris por defecto
+
 def agenda_medico(request):
-    """Renderiza la plantilla del calendario."""
-    return render(request, 'citas/agenda/agenda_medico.html', {})
+    # Renderiza la plantilla del calendario.
+    return render(request, 'citas/calendario.html')
 
 def horarios_json(request):
     """Versión que respeta la fecha UNTIL del RRULE"""

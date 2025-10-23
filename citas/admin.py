@@ -6,10 +6,12 @@ from django.contrib import admin
 from django.contrib.auth.models import User, Group
 from django.contrib.auth.admin import UserAdmin, GroupAdmin 
 from django.http import JsonResponse
-from django.urls import path, reverse
+from django.urls import path, reverse, include
 from django.utils.safestring import mark_safe
 from django.urls import reverse_lazy
 from django.contrib import messages
+from django.views.generic import RedirectView
+from .models import CitasReservadas
 
 # Importaciones de terceros
 from dateutil import rrule
@@ -42,6 +44,25 @@ class CustomAdminSite(admin.AdminSite):
             path('get_especialidades_medico/', self.admin_view(self.get_especialidades_medico), name='get_especialidades_medico'),
         ]
         return custom_urls + urls
+        
+    def get_app_list(self, request):
+        app_list = super().get_app_list(request)
+        
+        # Verificar si el usuario tiene permiso para ver el calendario
+        if request.user.has_perm('citas.view_citasreservadas'):
+            # Agregar el enlace al calendario
+            app_list.append({
+                'name': 'Calendario',
+                'app_label': 'citas_calendario',
+                'models': [{
+                    'name': 'Calendario de Citas',
+                    'object_name': 'calendario',
+                    'admin_url': '/admin/citas/citasreservadas/calendario/',
+                    'view_only': True,
+                }]
+            })
+        
+        return app_list
 
     # Métodos de vista para AJAX
     def get_ciudades(self, request):
@@ -673,6 +694,10 @@ admin_site.register(MedicoEspecialidad, MedicoEspecialidadAdmin)
 admin_site.register(Paciente, PacienteAdmin)
 admin_site.register(Consultorio, ConsultorioAdmin)
 admin_site.register(Banco, BancoAdmin)
+
+# Importar y registrar el CalendarioAdmin después de definir todos los modelos
+from .admin_calendario import CalendarioAdmin
+admin_site.register(CitasReservadas, CalendarioAdmin)
 admin_site.register(Pais, PaisAdmin)
 admin_site.register(Estado, EstadoAdmin)
 admin_site.register(Ciudad, CiudadAdmin)

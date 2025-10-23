@@ -1,0 +1,306 @@
+{% extends "admin/base_site.html" %}
+{% load static %}
+
+{% block extrastyle %}
+{{ block.super }}
+<link href='https://cdn.jsdelivr.net/npm/fullcalendar@5.11.3/main.min.css' rel='stylesheet' />
+<style>
+    /* Estilos base del calendario */
+    .fc-event {
+        cursor: pointer;
+        padding: 2px 4px;
+        border-radius: 3px;
+        font-size: 0.85em;
+        margin-bottom: 1px;
+    }
+    .fc-event-title {
+        white-space: normal;
+        font-weight: normal;
+    }
+    .fc-daygrid-event-dot {
+        display: none;
+    }
+
+    /* Mejora de la relación espacio-objeto */
+    .container-fluid {
+        padding: 20px;
+    }
+    .card {
+        margin-top: 20px;
+        box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+    }
+    .card-body {
+        padding: 20px;
+        width: 100%;
+    }
+    #calendar {
+        width: 100%;
+        margin: 0 auto;
+    }
+
+    /* 🚨 CRÍTICO: SOLO ESTILOS MÍNIMOS DE MODAL, CONFIANDO EN BOOTSTRAP */
+    .modal {
+        /* Asegura que la modal se posicione por encima de otros elementos de Django Admin */
+        z-index: 99999 !important; 
+    }
+    .modal-dialog {
+        /* Tamaño para que se vea ordenado como en sus imágenes */
+        max-width: 500px; 
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="content-wrapper">
+    <section class="content-header">
+        <div class="container-fluid">
+            <div class="row mb-2">
+                <div class="col-sm-6">
+                    <h1>Calendario de Citas</h1>
+                </div>
+                <div class="col-sm-6 text-right">
+                    <button id="nuevaCitaBtn" class="btn btn-primary">
+                        <i class="fas fa-plus"></i> Nueva Cita
+                    </button>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <section class="content">
+        <div class="container-fluid">
+            <div class="card">
+                <div class="card-body">
+                    <div id="calendar"></div>
+                </div>
+            </div>
+        </div>
+    </section>
+</div>
+
+<div id="citaModal" class="modal fade" tabindex="-1" role="dialog" aria-hidden="true">
+    <div class="modal-dialog" role="document">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="citaModalTitle">Detalles de la Cita</h5>
+                <button type="button" class="close" data-dismiss="modal" aria-label="Close">
+                    <span aria-hidden="true">&times;</span>
+                </button>
+            </div>
+            <div class="modal-body" id="citaModalBody">
+                <p>Cargando detalles de la cita...</p>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-dismiss="modal">Cerrar</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div id="nuevaCitaModal" class="modal fade" tabindex="-1" role="dialog" aria-hidden="true">
+    <div class="modal-dialog" role="document">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Nueva Cita</h5>
+                <button type="button" class="close" data-dismiss="modal" aria-label="Close">
+                    <span aria-hidden="true">&times;</span>
+                </button>
+            </div>
+            <div class="modal-body">
+                <form id="nuevaCitaForm">
+                    <div class="form-group">
+                        <label>Paciente</label>
+                        <select class="form-control" name="paciente" required>
+                            <option value="">Seleccione un paciente</option>
+                            {% for paciente in pacientes %}
+                            <option value="{{ paciente.id }}">{{ paciente.Nombres_Paciente }} {{ paciente.Apellidos_Paciente }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label>Médico</label>
+                        <select class="form-control" name="medico" required>
+                            <option value="">Seleccione un médico</option>
+                            {% for medico in medicos %}
+                            <option value="{{ medico.id }}">{{ medico.Nombres_Medico }} {{ medico.Apellidos_Medicos }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label>Costo (Decimal 10,2)</label>
+                        <input type="number" class="form-control" name="costo" value="0.00" min="0" step="0.01">
+                    </div>
+                    <div class="form-group">
+                        <label>Fecha y Hora</label>
+                        <input type="datetime-local" class="form-control" name="fecha_hora" required>
+                    </div>
+                    <div class="form-group">
+                        <label>Duración (minutos)</label>
+                        <input type="number" class="form-control" name="duracion" value="30" min="15" step="15" required>
+                    </div>
+                    <div class="form-group">
+                        <label>Notas</label>
+                        <textarea class="form-control" name="notas" rows="3"></textarea>
+                    </div>
+                </form>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-dismiss="modal">Cancelar</button>
+                <button type="button" class="btn btn-primary" id="guardarCitaBtn">Guardar Cita</button>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extrajs %}
+{{ block.super }}
+<script src="https://ajax.googleapis.com/ajax/libs/jquery/3.6.0/jquery.min.js"></script>
+
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@4.6.2/dist/js/bootstrap.bundle.min.js" integrity="sha384-Fy6S3B9q64WdZWQUiU+q4/2Lc9npb8tCaSX9FK7E8HnRr0Jz8D6OP9dO5Vg3Q9ct" crossorigin="anonymous"></script>
+
+<script src='https://cdn.jsdelivr.net/npm/fullcalendar@5.11.3/main.min.js'></script>
+<script src='https://cdn.jsdelivr.net/npm/fullcalendar@5.11.3/locales/es.js'></script>
+<script src='https://cdn.jsdelivr.net/npm/sweetalert2@11'></script>
+
+
+<script>
+// =================================================================================
+// CÓDIGO JavaScript CONSOLIDADO: Solo jQuery/Bootstrap y FullCalendar
+// =================================================================================
+
+// Configuración de AJAX y CSRF
+$.ajaxSetup({
+    headers: {
+        'X-CSRFToken': getCookie('csrftoken')
+    }
+});
+
+function getCookie(name) {
+    let cookieValue = null;
+    if (document.cookie && document.cookie !== '') {
+        const cookies = document.cookie.split(';');
+        for (let i = 0; i < cookies.length; i++) {
+            const cookie = cookies[i].trim();
+            if (cookie.substring(0, name.length + 1) === (name + '=')) {
+                cookieValue = decodeURIComponent(cookie.substring(name.length + 1));
+                break;
+            }
+        }
+    }
+    return cookieValue;
+}
+
+let calendar = null; 
+
+document.addEventListener('DOMContentLoaded', function() {
+    console.log('DOM cargado, inicializando calendario...');
+
+    const calendarEl = document.getElementById('calendar');
+    if (!calendarEl) return;
+
+    // Cargar eventos (Asegúrese de que su contexto Django pasa la variable eventos_json)
+    let eventosData = [];
+    try {
+        eventosData = JSON.parse('{{ eventos_json|escapejs }}');
+    } catch (error) {
+        console.error('Error al cargar/parsear los eventos:', error);
+    }
+
+    // Inicializar el calendario
+    const calendarInstance = new FullCalendar.Calendar(calendarEl, {
+        initialView: 'dayGridMonth',
+        locale: 'es',
+        headerToolbar: {
+            left: 'prev,next today',
+            center: 'title',
+            right: 'dayGridMonth,timeGridWeek,timeGridDay'
+        },
+        events: eventosData,
+        eventClick: function(info) {
+            const event = info.event;
+            const props = event.extendedProps || (event._def ? event._def.extendedProps : {}) || {};
+            const modalBody = $('#citaModalBody');
+            
+            modalBody.html(`
+                <p><strong>Paciente:</strong> ${props.paciente || 'No disponible'}</p>
+                <p><strong>Médico:</strong> ${props.medico || 'No disponible'}</p>
+                <p><strong>Fecha y Hora:</strong> ${event.start ? event.start.toLocaleString('es-ES') : 'No disponible'}</p>
+                <p><strong>Estado:</strong> ${props.estado || 'Pendiente'}</p>
+                ${props.costo ? `<p><strong>Costo:</strong> $${parseFloat(props.costo).toFixed(2)}</p>` : ''}
+                <p><strong>Notas:</strong> ${props.nota || props.notas || 'Sin notas'}</p>
+            `);
+            
+            // USAR EXCLUSIVAMENTE jQuery/Bootstrap
+            $('#citaModal').modal('show'); 
+            info.jsEvent.preventDefault();
+        }
+    });
+
+    calendar = calendarInstance;
+    calendar.render();
+
+    // 1. MANEJADOR PARA NUEVA CITA (USANDO jQuery/Bootstrap)
+    $('#nuevaCitaBtn').on('click', function() {
+        const form = $('#nuevaCitaForm');
+        form[0].reset();
+        
+        // Establecer fecha y hora actual
+        const now = new Date();
+        const year = now.getFullYear();
+        const month = String(now.getMonth() + 1).padStart(2, '0');
+        const day = String(now.getDate()).padStart(2, '0');
+        const hours = String(now.getHours()).padStart(2, '0');
+        const minutes = String(now.getMinutes()).padStart(2, '0');
+        
+        form.find('input[name="fecha_hora"]').val(`${year}-${month}-${day}T${hours}:${minutes}`);
+        form.find('input[name="duracion"]').val('30');
+        form.find('input[name="costo"]').val('0.00');
+
+        // USAR EXCLUSIVAMENTE jQuery/Bootstrap
+        $('#nuevaCitaModal').modal('show'); 
+    });
+
+    // 2. MANEJADOR PARA GUARDAR CITA (USANDO jQuery/Bootstrap)
+    $('#guardarCitaBtn').on('click', function() {
+        const form = $('#nuevaCitaForm');
+        if (form[0].checkValidity()) {
+            const formData = {
+                paciente: form.find('select[name="paciente"]').val(),
+                medico: form.find('select[name="medico"]').val(),
+                fecha_hora: form.find('input[name="fecha_hora"]').val(),
+                duracion: form.find('input[name="duracion"]').val(),
+                costo: form.find('input[name="costo"]').val(),
+                notas: form.find('textarea[name="notas"]').val(),
+                estado: 'pendiente'
+            };
+
+            const btn = $(this);
+            const originalText = btn.html();
+            btn.html('<i class="fas fa-spinner fa-spin"></i> Guardando...').prop('disabled', true);
+
+            $.ajax({
+                url: '{% url "citas:crear_cita" %}',
+                type: 'POST',
+                data: formData,
+                success: function(response) {
+                    // USAR EXCLUSIVAMENTE jQuery/Bootstrap para cerrar el modal
+                    $('#nuevaCitaModal').modal('hide'); 
+                    Swal.fire({ title: '¡Éxito!', text: 'La cita se ha guardado correctamente', icon: 'success' });
+                    calendar.refetchEvents();
+                },
+                error: function(xhr) {
+                    let errorMessage = xhr.responseJSON && xhr.responseJSON.error ? xhr.responseJSON.error : 'Ocurrió un error al guardar la cita';
+                    Swal.fire({ title: 'Error', text: errorMessage, icon: 'error' });
+                },
+                complete: function() {
+                    btn.html(originalText).prop('disabled', false);
+                }
+            });
+        } else {
+            form[0].reportValidity();
+        }
+    });
+});
+</script>
+{% endblock %}

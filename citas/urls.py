@@ -1,5 +1,7 @@
 from django.urls import path, include
 from django.contrib.auth.decorators import login_required
+from django.views.decorators.csrf import csrf_exempt
+from django.views.decorators.http import require_http_methods
 from . import views
 from .views_consultorios import (
     ConsultorioListView, ConsultorioCreateView, ConsultorioUpdateView,
@@ -49,6 +51,11 @@ urlpatterns = [
     path('bancos/nuevo/', views.BancoCreateView.as_view(), name='banco_create'),
     path('bancos/editar/<int:pk>/', views.BancoUpdateView.as_view(), name='banco_update'),
     
+    # URLs para el Calendario de Citas
+    path('calendario/', views.calendario_view, name='calendario'),
+    path('api/crear_cita/', csrf_exempt(views.crear_cita), name='crear_cita'),
+    path('api/eventos/', views.obtener_eventos, name='obtener_eventos'),
+    
     # API para obtener especialidades de un médico
     path('api/get-especialidades/<int:medico_id>/', views.get_especialidades_medico, name='get_especialidades_medico'),
     path('bancos/eliminar/<int:pk>/', views.BancoDeleteView.as_view(), name='banco_delete'),
@@ -58,5 +65,6 @@ urlpatterns = [
     
     # O si ya tienes una ruta para agenda, verifica que esté así:
     path('agenda/', views.agenda_medico, name='agenda_medico'),
-    
+    path('crear_cita/', views.crear_cita, name='crear_cita'),
+    path('calendario/', views.calendario_view, name='calendario'),
 ]

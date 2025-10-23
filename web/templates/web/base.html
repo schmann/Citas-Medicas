@@ -29,23 +29,21 @@
                             <a class="nav-link" href="{% url 'web:inicio' %}">Inicio</a>
                         </li>
                         <li class="nav-item">
-                            <a class="nav-link" href="{% url 'citas:registrar' %}">Registrar Paciente</a>
+                            <a class="nav-link" href="{% url 'citas:registrar' %}">
+                                <i class="fas fa-user-plus me-1"></i>Registrar Paciente
+                            </a>
                         </li>
                         
-                        {% if user.is_authenticated %} 
-                        <li class="nav-item dropdown">
-                            <a class="nav-link dropdown-toggle" href="#" id="navbarMedicos" role="button" data-bs-toggle="dropdown" aria-expanded="false">
-                                Médicos
+                        {% if user.is_authenticated %}
+                        <li class="nav-item">
+                            <a class="nav-link" href="{% url 'citas:calendario' %}">
+                                <i class="far fa-calendar-alt me-1"></i>Calendario
                             </a>
-                            <ul class="dropdown-menu" aria-labelledby="navbarMedicos">
-                                <li><a class="dropdown-item" href="{% url 'citas:listar_medicos' %}"><i class="fas fa-list me-2"></i>Listar Médicos</a></li>
-                                <li><a class="dropdown-item" href="{% url 'citas:crear_medico' %}"><i class="fas fa-plus-circle me-2"></i>Nuevo Médico</a></li>
-                                <li><hr class="dropdown-divider"></li>
-                                <li><a class="dropdown-item" href="{% url 'citas:listar_especialidades' %}"><i class="fas fa-stethoscope me-2"></i>Especialidades</a></li>
-                            </ul>
                         </li>
                         <li class="nav-item">
-                            <a class="nav-link" href="{% url 'admin:index' %}">Administración</a>
+                            <a class="nav-link" href="{% url 'admin:index' %}">
+                                <i class="fas fa-cog me-1"></i>Administración
+                            </a>
                         </li>
                         {% endif %}
                     </ul>
