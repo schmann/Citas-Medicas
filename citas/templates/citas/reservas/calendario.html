@@ -10,44 +10,43 @@
     /* =================================================== */
     
     /* Ajustes para el contenedor principal */
-    .content-wrapper {
-        padding: 15px !important;
-        margin: 0 auto !important;
-        width: 100%;
-        max-width: 95%;
-    }
-    
+      
+    /* Contenido principal */
     .content {
-        padding: 15px !important;
+        padding: 20px !important;
+        margin: 0 auto;
         width: 100%;
+        max-width: 1600px;
     }
     
     .container-fluid {
         padding: 0 15px !important;
+        width: 100%;
+        margin: 0 auto;
     }
     
-    /* Estilo para la tarjeta del calendario */
+    /* Tarjeta del calendario */
     .card {
         margin: 0 auto;
-        border: 1px solid #dee2e6;
+        border: 1px solid #e0e0e0;
         border-radius: 8px;
-        box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        box-shadow: 0 2px 15px rgba(0,0,0,0.05);
         width: 100%;
-        max-width: 1200px;
-        display: block;
+        padding: 20px;
     }
     
+    /* Cuerpo de la tarjeta */
+    
     .card-body {
-        padding: 15px;
         width: 100%;
     }
     
     /* Estilos para FullCalendar */
     #calendar {
-        width: 100%;
-        margin: 0 auto;
-        max-width: 100%;
-        box-sizing: border-box;
+        width: 100% !important;
+        margin: 0 auto !important;
+        max-width: 100% !important;
+        box-sizing: border-box !important;
     }
     
     .fc {
@@ -169,32 +168,22 @@
 {% endblock %}
 
 {% block content %}
-<div class="content-wrapper">
-    <section class="content-header">
-        <div class="container-fluid">
-            <div class="row mb-2">
-                <div class="col-sm-6">
-                    <h1>Calendario de Citas</h1>
-                </div>
-                <div class="col-sm-6 text-right">
-                    <button id="nuevaCitaBtn" class="btn btn-primary">
-                        <i class="fas fa-plus"></i> Nueva Cita
-                    </button>
-                </div>
+    <div class="container-fluid">
+        <div class="row mb-2">
+            <div class="col-sm-6">
+                <h1>Calendario de Citas</h1>
+            </div>
+            <div class="col-sm-6 text-right">
+                <button id="nuevaCitaBtn" class="btn btn-primary">
+                    <i class="fas fa-plus"></i> Nueva Cita
+                </button>
             </div>
         </div>
-    </section>
+    </div>
 
-    <section class="content">
-        <div class="container-fluid">
-            <div class="card">
-                <div class="card-body">
-                    <div id="calendar"></div>
-                </div>
-            </div>
-        </div>
-    </section>
-</div>
+    <div class="card">
+        <div id="calendar"></div>
+    </div>
 
 <!-- Modal para detalles de cita (Personalizado) -->
 <div id="citaModal" class="custom-modal">
@@ -598,22 +587,23 @@ document.addEventListener('DOMContentLoaded', function() {
                     
                     <div class="form-group">
                         <label for="costoInput" class="font-weight-bold">Costo</label>
-                        <div class="input-group">
+                        <div class="input-group" style="width: 100%;">
                             <div class="input-group-prepend">
-                                <span class="input-group-text">$</span>
+                                <span class="input-group-text" style="background-color: #f8f9fa; border-right: none;">$</span>
                             </div>
-                          <input type="number" 
-                                 class="form-control" 
-                                 id="costoInput" 
-                                 name="costo" 
-                                 value="" 
-                                 min="0"
-                                 step="0.01"
-                                 placeholder="0.00" 
-                                 required
-                                 onkeypress="return (event.charCode >= 48 && event.charCode <= 57) || event.charCode === 46">
+                            <input type="number" 
+                                   class="form-control" 
+                                   id="costoInput" 
+                                   name="costo" 
+                                   value="" 
+                                   min="0"
+                                   step="0.01"
+                                   placeholder="0.00" 
+                                   required
+                                   style="border-left: none;"
+                                   onkeypress="return (event.charCode >= 48 && event.charCode <= 57) || event.charCode === 46">
                         </div>
-                        <small class="form-text text-muted">Ingrese el monto (ejemplo: 20.50)</small>
+                        <small class="form-text text-muted">Ejemplo: 20.50</small>
                     </div>
                     
                     <div class="form-group">
