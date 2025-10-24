@@ -850,47 +850,95 @@ def cancelar_cita(request, cita_id):
 def obtener_eventos(request):
     """
     Vista para obtener los eventos del calendario en formato JSON.
+    Incluye tanto las citas programadas como los horarios de disponibilidad.
     """
-    from .models import CitasReservadas
+    from .models import CitasReservadas, HorarioCita
+    from django.utils import timezone
+    from datetime import timedelta
     
     try:
-        # Obtener parámetros de filtrado (opcional)
-        start = request.GET.get('start')
-        end = request.GET.get('end')
+        # Obtener parámetros de filtrado
+        start_str = request.GET.get('start')
+        end_str = request.GET.get('end')
         
-        # Construir el queryset base
-        queryset = CitasReservadas.objects.select_related('paciente', 'horario__medico', 'horario__especialidad')
+        # Convertir fechas de string a objetos datetime
+        start = timezone.datetime.fromisoformat(start_str) if start_str else timezone.now() - timedelta(days=30)
+        end = timezone.datetime.fromisoformat(end_str) if end_str else timezone.now() + timedelta(days=60)
         
-        # Filtrar por rango de fechas si se proporciona
-        if start and end:
-            queryset = queryset.filter(
-                start_datetime__gte=start,
-                start_datetime__lte=end
-            )
-        
-        # Convertir a formato FullCalendar
         eventos = []
-        for cita in queryset:
-            eventos.append({
-                'id': cita.id,
-                'title': f"{cita.paciente.Nombres_Paciente} {cita.paciente.Apellidos_Paciente}",
-                'start': cita.start_datetime.isoformat(),
-                'end': cita.end_datetime.isoformat(),
-                'extendedProps': {
-                    'paciente': f"{cita.paciente.Nombres_Paciente} {cita.paciente.Apellidos_Paciente}",
-                    'medico': f"{cita.horario.medico.Nombres_Medico} {cita.horario.medico.Apellidos_Medicos}",
-                    'especialidad': cita.horario.especialidad.Espacialidad_Medica if cita.horario.especialidad else '',
-                    'estado': cita.estado,
-                    'notas': cita.nota or '',
-                },
-                'color': get_color_estado(cita.estado),
-                'textColor': '#ffffff'
-            })
         
+        # 1. Obtener citas programadas
+        citas = CitasReservadas.objects.filter(
+            start_datetime__gte=start,
+            end_datetime__lte=end
+        ).select_related('paciente', 'horario__medico', 'horario__especialidad')
+        
+        for cita in citas:
+            try:
+                eventos.append({
+                    'id': f'cita_{cita.id}',
+                    'title': f"{cita.paciente.Nombres_Paciente} {cita.paciente.Apellidos_Paciente}",
+                    'start': cita.start_datetime.isoformat(),
+                    'end': cita.end_datetime.isoformat(),
+                    'extendedProps': {
+                        'tipo': 'cita',
+                        'paciente': f"{cita.paciente.Nombres_Paciente} {cita.paciente.Apellidos_Paciente}",
+                        'medico': f"{cita.horario.medico.Nombres_Medico} {cita.horario.medico.Apellidos_Medicos}" if cita.horario and cita.horario.medico else 'Sin médico asignado',
+                        'especialidad': cita.horario.especialidad.Espacialidad_Medica if cita.horario and cita.horario.especialidad else 'Sin especialidad',
+                        'estado': cita.estado,
+                        'notas': cita.nota or '',
+                    },
+                    'color': get_color_estado(cita.estado),
+                    'textColor': '#ffffff',
+                    'editable': False,
+                    'startEditable': False,
+                    'durationEditable': False,
+                    'resourceEditable': False
+                })
+            except Exception as e:
+                print(f"Error procesando cita {cita.id}: {str(e)}")
+                continue
+        
+        # 2. Obtener horarios de disponibilidad
+        horarios = HorarioCita.objects.filter(
+            activo=True,
+            start_datetime__lte=end,
+            end_datetime__gte=start
+        ).select_related('medico', 'especialidad')
+        
+        for horario in horarios:
+            try:
+                eventos.append({
+                    'id': f'disponibilidad_{horario.id}',
+                    'title': 'Disponible',
+                    'start': horario.start_datetime.isoformat(),
+                    'end': horario.end_datetime.isoformat(),
+                    'extendedProps': {
+                        'tipo': 'disponibilidad',
+                        'medico': f"{horario.medico.Nombres_Medico} {horario.medico.Apellidos_Medicos}",
+                        'especialidad': horario.especialidad.Espacialidad_Medica if horario.especialidad else 'Sin especialidad',
+                        'estado': 'disponible',
+                    },
+                    'color': '#28a745',  # Verde para disponibilidad
+                    'textColor': '#ffffff',
+                    'editable': False,
+                    'startEditable': False,
+                    'durationEditable': False,
+                    'resourceEditable': False
+                })
+            except Exception as e:
+                print(f"Error procesando horario {horario.id}: {str(e)}")
+                continue
+        
+        print(f"🔍 Eventos encontrados: {len(eventos)} (Citas: {citas.count()}, Horarios: {horarios.count()})")
         return JsonResponse(eventos, safe=False)
         
     except Exception as e:
-        return JsonResponse({'error': str(e)}, status=500)
+        error_msg = f'Error al obtener eventos: {str(e)}'
+        print(f"ERROR: {error_msg}")
+        import traceback
+        print(traceback.format_exc())
+        return JsonResponse({'error': error_msg}, status=500)
 
 def get_estado_color(estado):
     """Devuelve un color según el estado de la cita"""

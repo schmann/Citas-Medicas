@@ -838,9 +838,35 @@
                 mostrarExito('La cita ha sido agendada correctamente.');
                 
                 // Recargar eventos del calendario
-                if (calendar) {
+                if (window.calendar) {
                     console.log('🔄 Recargando calendario después de guardar cita');
-                    calendar.refetchEvents();
+                    
+                    // Forzar una recarga completa del calendario
+                    const view = window.calendar.view;
+                    const currentStart = view.activeStart;
+                    const currentEnd = view.activeEnd;
+                    
+                    // 1. Primero, limpiar todos los eventos
+                    window.calendar.getEvents().forEach(event => event.remove());
+                    
+                    // 2. Luego, recargar los eventos para el rango actual
+                    window.calendar.refetchEvents({
+                        start: currentStart,
+                        end: currentEnd,
+                        isRefetch: true
+                    });
+                    
+                    // 3. Forzar una actualización visual
+                    setTimeout(() => {
+                        window.calendar.updateSize();
+                        window.calendar.render();
+                        
+                        // Navegar a la fecha actual para asegurar que se vea la cita
+                        const fechaCita = new Date(resultado.fecha + 'T' + resultado.hora);
+                        window.calendar.gotoDate(fechaCita);
+                        
+                        console.log('✅ Calendario actualizado correctamente');
+                    }, 300);
                 }
             } else {
                 mostrarError(resultado.error || 'Error al guardar la cita');
