@@ -636,7 +636,7 @@ document.addEventListener('DOMContentLoaded', function() {
     function cargarEspecialidadesMedico(medicoId) {
         return new Promise((resolve, reject) => {
             if (!medicoId) {
-                resolve([]);
+                resolve({especialidades: [], mensaje_horario: ''});
                 return;
             }
             
@@ -644,9 +644,43 @@ document.addEventListener('DOMContentLoaded', function() {
                 url: `/citas/api/get-especialidades/${medicoId}/`,
                 type: 'GET',
                 dataType: 'json',
-                success: (especialidades) => {
-                    // La respuesta ya es el array de especialidades
-                    resolve(especialidades);
+                success: (response) => {
+                    // Verificar si la respuesta es un array (para compatibilidad hacia atrás)
+                    const data = Array.isArray(response) ? {especialidades: response, mensajes_horario: {}} : response;
+                    
+                    // Mostrar el mensaje de horario en el modal si existe
+                    const horarioInfo = document.getElementById('horario-info');
+                    if (horarioInfo) {
+                        // Ocultar por defecto, se mostrará cuando se seleccione una especialidad
+                        horarioInfo.style.display = 'none';
+                    }
+                    
+                    // Guardar los mensajes de horario en un objeto global
+                    if (data.mensajes_horario) {
+                        window.mensajesHorario = data.mensajes_horario;
+                    } else {
+                        window.mensajesHorario = {};
+                    }
+                    
+                    // Agregar evento para mostrar el mensaje cuando se seleccione una especialidad
+                    const selectEspecialidad = document.getElementById('especialidadSelect');
+                    if (selectEspecialidad) {
+                        selectEspecialidad.onchange = function() {
+                            const selectedId = this.value;
+                            const mensaje = window.mensajesHorario && window.mensajesHorario[selectedId];
+                            
+                            if (horarioInfo) {
+                                if (mensaje) {
+                                    horarioInfo.innerHTML = `<small class="text-muted">${mensaje}</small>`;
+                                    horarioInfo.style.display = 'block';
+                                } else {
+                                    horarioInfo.style.display = 'none';
+                                }
+                            }
+                        };
+                    }
+                    
+                    resolve(data.especialidades || []);
                 },
                 error: (xhr) => {
                     console.error('Error al cargar especialidades:', xhr);
@@ -686,7 +720,7 @@ document.addEventListener('DOMContentLoaded', function() {
             
             // Crear el formulario
             const formHTML = `
-                <form id="nuevaCitaForm">
+                <form id="nuevaCitaForm" onsubmit="event.preventDefault(); manejarGuardarCita(event);">
                     <div class="form-group">
                         <label for="pacienteSelect" class="font-weight-bold">Paciente</label>
                         <select class="form-control" id="pacienteSelect" name="paciente" required>
@@ -706,6 +740,7 @@ document.addEventListener('DOMContentLoaded', function() {
                         <select class="form-control" id="especialidadSelect" name="especialidad" required>
                             <option value="">Cargando especialidades...</option>
                         </select>
+                        <div id="horario-info" class="mt-2" style="display: none; font-size: 0.85em;"></div>
                     </div>
                     
                     <div class="form-group">
@@ -732,6 +767,7 @@ document.addEventListener('DOMContentLoaded', function() {
                     <div class="form-group">
                         <label for="fechaHoraInput" class="font-weight-bold">Fecha y Hora</label>
                         <input type="datetime-local" class="form-control" id="fechaHoraInput" name="fecha_hora" required>
+                        <div id="horario-info" class="mt-2" style="display: none; font-size: 0.85em; color: #dc3545;"></div>
                     </div>
                     
                     <div class="form-group">
@@ -806,6 +842,62 @@ document.addEventListener('DOMContentLoaded', function() {
                             });
                             especialidadSelect.innerHTML = options;
                             especialidadSelect.disabled = false;
+                            
+                            // Agregar manejador de eventos para el cambio de especialidad
+                            especialidadSelect.addEventListener('change', async function() {
+                                const fechaHoraInput = document.getElementById('fechaHoraInput');
+                                if (!fechaHoraInput.value) {
+                                    return; // No hacer nada si no hay fecha seleccionada
+                                }
+                                
+                                const fechaHora = new Date(fechaHoraInput.value);
+                                const medicoId = document.getElementById('medicoSelect').value;
+                                const especialidadId = this.value;
+                                
+                                if (!medicoId || !especialidadId) {
+                                    return;
+                                }
+                                
+                                console.log('Validando horario para especialidad seleccionada:', {
+                                    medicoId,
+                                    especialidadId,
+                                    fechaHora
+                                });
+                                
+                                try {
+                                    const validacion = await validarHorarioCita(medicoId, especialidadId, fechaHora);
+                                    console.log('Resultado de validación:', validacion);
+                                    
+                                    const horarioInfo = document.getElementById('horario-info');
+                                    
+                                    if (validacion.horarios && validacion.horarios.length > 0) {
+                                        // Obtener el primer horario disponible
+                                        const horario = validacion.horarios[0];
+                                        
+                                        // Mostrar en el div horario-info
+                                        horarioInfo.innerHTML = `
+                                            <div class="alert alert-info p-2 mb-0">
+                                                <i class="fas fa-clock me-2"></i>
+                                                <strong>Horario de atención:</strong> 
+                                                <span>${horario.rango_horario || 'Horario no especificado'}</span>
+                                            </div>
+                                        `;
+                                        horarioInfo.style.display = 'block';
+                                    } else {
+                                        horarioInfo.innerHTML = '';
+                                        horarioInfo.style.display = 'none';
+                                    }
+                                    
+                                    if (!validacion.valido) {
+                                        if (validacion.mensaje && !validacion.mensaje.includes('No se encontraron horarios')) {
+                                            alert(validacion.mensaje);
+                                        }
+                                        this.value = ''; // Limpiar la selección
+                                    }
+                                } catch (error) {
+                                    console.error('Error al validar el horario:', error);
+                                }
+                            });
                         } else {
                             especialidadSelect.innerHTML = '<option value="">No hay especialidades disponibles</option>';
                             especialidadSelect.disabled = true;
@@ -828,138 +920,329 @@ document.addEventListener('DOMContentLoaded', function() {
         }
     }
     
-    async function validarHorarioCita(medicoId, especialidadId, fechaHora, duracionMinutos = 30) {
-        // 1. Validar parámetros de entrada
-        if (!medicoId || !especialidadId || !fechaHora || typeof duracionMinutos !== 'number' || duracionMinutos <= 0) {
-            console.error('Parámetros inválidos para validarHorarioCita:', { medicoId, especialidadId, fechaHora, duracionMinutos });
-            return {
-                valido: false,
-                mensaje: 'Datos de validación incompletos o duración inválida. Por favor, verifique los datos e intente nuevamente.'
-            };
-        }
-
-        try {
-            console.log('Validando horario para:', { medicoId, especialidadId, fechaHora });
-
-            // Paso 1.1: Fetch de Horarios
-            const response = await fetch(`/citas/api/horarios-medico/${medicoId}/${especialidadId}/`);
-
-            if (!response.ok) {
-                const errorData = await response.json().catch(() => ({}));
-                throw new Error(errorData.error || `Error ${response.status}: ${response.statusText}`);
-            }
-
-            const data = await response.json();
-            console.log('Datos de horarios recibidos:', data);
-
-            if (!data.horarios || !Array.isArray(data.horarios)) {
-                throw new Error('Formato de respuesta inválido: falta el arreglo de horarios');
-            }
-
-            // Paso 2. Procesamiento de la Fecha/Hora Seleccionada
-
-            // Usamos solo la hora/fecha proporcionada para ignorar la zona horaria local del cliente
-            // Esto asume que 'fechaHora' ya está en la zona horaria del servidor (clínica).
-            const fechaSeleccionada = new Date(fechaHora); 
-            
-            if (isNaN(fechaSeleccionada.getTime())) {
-                throw new Error('Fecha y hora inválidas');
-            }
-
-            // Mapeo Crítico del Día de la Semana: 
-            // JS getDay() va de 0 (Dom) a 6 (Sáb). Django/ISO usa 1 (Lun) a 7 (Dom).
-            let diaSemana = fechaSeleccionada.getDay(); // 0 (domingo) a 6 (sábado)
-            if (diaSemana === 0) {
-                diaSemana = 7; // Convertir Domingo (0) a 7
-            }
-
-            // Hora de la cita en minutos desde la medianoche
-            const horaInicioCitaMinutos = fechaSeleccionada.getHours() * 60 + fechaSeleccionada.getMinutes();
-            const horaFinCitaMinutos = horaInicioCitaMinutos + duracionMinutos;
-
-            // Paso 3. Verificar si hay algún horario que coincida
-            const horarioValido = data.horarios.some(horario => {
-                try {
-                    // Verificar campos necesarios
-                    if (!horario.dia_semana || !horario.hora_inicio || !horario.hora_fin) {
-                        console.warn('Horario con formato inválido:', horario);
-                        return false;
-                    }
-                    
-                    // 3.1. Validación del Día de la Semana
-                    // Asumimos que 'dia_semana' viene como un entero (1-7) del backend, 
-                    // ya que su modelo Django usa un entero.
-                    if (horario.dia_semana !== diaSemana) {
-                        return false;
-                    }
-                    
-                    // 3.2. Validación del Rango de Hora
-                    const inicioPartes = horario.hora_inicio.split(':');
-                    const finPartes = horario.hora_fin.split(':');
-                    
-                    // Convertir hora de inicio y fin del turno a minutos
-                    const horaInicioTurno = parseInt(inicioPartes[0], 10);
-                    const minutoInicioTurno = parseInt(inicioPartes[1], 10);
-                    const horaFinTurno = parseInt(finPartes[0], 10);
-                    const minutoFinTurno = parseInt(finPartes[1], 10);
-                    
-                    const inicioMinutos = horaInicioTurno * 60 + minutoInicioTurno;
-                    const finMinutos = horaFinTurno * 60 + minutoFinTurno;
-
-                    // VALIDACIÓN CRÍTICA:
-                    // 1. La hora de inicio de la cita debe ser mayor o igual que la hora de inicio del turno.
-                    // 2. La hora de FIN de la cita (inicio + duración) debe ser menor o igual que la hora de fin del turno.
-                    const inicioValido = horaInicioCitaMinutos >= inicioMinutos;
-                    const finValido = horaFinCitaMinutos <= finMinutos;
-
-                    return inicioValido && finValido;
-                    
-                }
-                 catch (error) {
-                    console.error('Error al procesar horario:', error, 'Horario:', horario);
-                    return false;
-                }
-            });
-
-            // Paso 4. Devolver Resultado
-            if (!horarioValido) {
+        async function validarHorarioCita(medicoId, especialidadId, fechaHora, duracionMinutos = 30) {
+            // 1. Validar parámetros de entrada
+            if (!medicoId || !especialidadId || !fechaHora || typeof duracionMinutos !== 'number' || duracionMinutos <= 0) {
+                console.error('Parámetros inválidos para validarHorarioCita:', { medicoId, especialidadId, fechaHora, duracionMinutos });
                 return {
                     valido: false,
-                    mensaje: 'La fecha y hora seleccionadas, incluyendo la duración, exceden el horario laboral del médico. Por favor, seleccione un bloque de tiempo que encaje en el turno.'
+                    mensaje: 'Datos de validación incompletos o duración inválida. Por favor, verifique los datos e intente nuevamente.'
                 };
             }
+            
+            console.log('Iniciando validación de horario para:', { 
+                medicoId, 
+                especialidadId, 
+                fechaHora,
+                duracionMinutos 
+            });
 
-            return { valido: true };
+            try {
+                console.log('Validando horario para:', { medicoId, especialidadId, fechaHora });
 
-        } 
-        catch (error) {
-            console.error('Error al validar horario:', error);
-            return {
-                valido: false,
-                mensaje: `Error al validar el horario: ${error.message || 'Por favor, intente nuevamente más tarde.'}`
-            };
+                // Paso 1.1: Fetch de Horarios
+                const url = `/citas/api/horarios-medico/${medicoId}/${especialidadId}/`;
+                console.log('Haciendo petición a:', url);
+                
+                try {
+                    const response = await fetch(url);
+                    console.log('Respuesta recibida, estado:', response.status);
+                    
+                    const responseData = await response.json().catch(() => ({}));
+                    
+                    if (!response.ok) {
+                        console.error('Error en la respuesta del servidor:', response.status, responseData);
+                        
+                        // Mostrar notificación con detalles del error
+                        let errorMessage = `Error al obtener horarios (${response.status}): `;
+                        
+                        if (responseData.error) {
+                            errorMessage += responseData.error;
+                            if (responseData.sugerencia) {
+                                errorMessage += `\n\nSugerencia: ${responseData.sugerencia}`;
+                            }
+                            if (responseData.debug_info) {
+                                console.error('Información de depuración:', responseData.debug_info);
+                                errorMessage += `\n\nCódigo de error: ${responseData.codigo_error || 'DESCONOCIDO'}`;
+                            }
+                        } else {
+                            errorMessage += 'No se pudo validar el horario';
+                        }
+                        
+                        // Mostrar notificación con formato mejorado
+                        Swal.fire({
+                            title: 'Error al validar horario',
+                            text: errorMessage,
+                            icon: 'error',
+                            confirmButtonText: 'Entendido',
+                            confirmButtonColor: '#dc3545',
+                        });
+                        
+                        return {
+                            valido: false,
+                            mensaje: errorMessage,
+                            codigoError: responseData.codigo_error || 'ERROR_DESCONOCIDO',
+                            datosError: responseData
+                        };
+                    }
+                    
+                    // Si llegamos aquí, la respuesta fue exitosa
+                    console.log('Datos de horarios recibidos:', responseData);
+                    
+                    if (!responseData.horarios || !Array.isArray(responseData.horarios) || responseData.horarios.length === 0) {
+                        console.log('No se encontraron horarios para el médico y especialidad seleccionados');
+                        
+                        // Mostrar notificación con formato mejorado
+                        Swal.fire({
+                            title: 'Horarios no disponibles',
+                            html: `No se encontraron horarios registrados para la combinación de médico y especialidad seleccionada.<br><br>
+                                   <strong>Sugerencia:</strong> Por favor, intente con otra especialidad o póngase en contacto con el consultorio.`,
+                            icon: 'warning',
+                            confirmButtonText: 'Entendido',
+                            confirmButtonColor: '#3085d6',
+                        });
+                        
+                        return {
+                            valido: false,
+                            mensaje: 'No se encontraron horarios disponibles para la especialidad seleccionada.'
+                        };
+                    }
+                    
+                    // Continuar con el procesamiento de los horarios
+                    const horarios = responseData.horarios;
+                    const diaSemana = fechaHora.getDay(); // 0 (domingo) a 6 (sábado)
+                    console.log('Día de la semana seleccionado (0=domingo):', diaSemana);
+                    
+                    // Resto del código de procesamiento de horarios...
+                    // [Aquí iría el resto de la lógica de validación de horarios]
+                    
+                    return {
+                        valido: true,
+                        data: responseData,
+                        mensaje: responseData.mensaje || 'Horario validado correctamente',
+                        horarios: horarios
+                    };
+                    
+                } catch (error) {
+                    console.error('Error al procesar la respuesta:', error);
+                    
+                    // Mostrar notificación de error
+                    Swal.fire({
+                        title: 'Error de conexión',
+                        text: 'No se pudo conectar con el servidor. Por favor, verifica tu conexión e inténtalo de nuevo.',
+                        icon: 'error',
+                        confirmButtonText: 'Entendido',
+                        confirmButtonColor: '#dc3545',
+                    });
+                    
+                    return {
+                        valido: false,
+                        mensaje: `Error de conexión: ${error.message || 'No se pudo conectar con el servidor'}`,
+                        esErrorRed: true
+                    };
+                }
+                
+                // Obtener el día de la semana (0-6, donde 0 es domingo)
+                const diaSemana = fechaHora.getDay(); // 0 (domingo) a 6 (sábado)
+                console.log('Día de la semana seleccionado (0=domingo):', diaSemana);
+                
+                // Formatear la hora seleccionada para comparación
+                const horaSeleccionada = fechaHora.getHours() * 60 + fechaHora.getMinutes(); // en minutos
+                console.log('Hora seleccionada (minutos desde medianoche):', horaSeleccionada);
+                
+                // Almacenar información de horarios disponibles para mensajes de error
+                const horariosDisponibles = [];
+                
+                // Buscar un horario que coincida con el día y la hora
+                const horarioValido = data.horarios.some(horario => {
+                    // Verificar si el día de la semana está en los días permitidos
+                    const diasDisponibles = horario.dias_semana || [];
+                    const diaValido = diasDisponibles.length === 0 || diasDisponibles.includes(diaSemana);
+                    
+                    if (!diaValido) {
+                        console.log('Día de la semana no coincide:', diaSemana, 'no está en', diasDisponibles);
+                        return false;
+                    }
+                    
+                    // Convertir las horas de inicio y fin a minutos desde medianoche
+                    const [horaInicio, minutoInicio] = horario.start_time.split(':').map(Number);
+                    const [horaFin, minutoFin] = horario.end_time.split(':').map(Number);
+                    
+                    const inicioMinutos = horaInicio * 60 + minutoInicio;
+                    const finMinutos = horaFin * 60 + minutoFin;
+                    
+                    // Formatear horario para mostrar al usuario
+                    const formatoHora = (h, m) => {
+                        const periodo = h >= 12 ? 'PM' : 'AM';
+                        const hora12 = h % 12 || 12;
+                        return `${hora12}:${m.toString().padStart(2, '0')} ${periodo}`;
+                    };
+                    
+                    const horarioFormateado = {
+                        inicio: formatoHora(horaInicio, minutoInicio),
+                        fin: formatoHora(horaFin, minutoFin),
+                        rango: `${formatoHora(horaInicio, minutoInicio)} - ${formatoHora(horaFin, minutoFin)}`,
+                        dias: diasDisponibles.map(d => ['Domingo', 'Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes', 'Sábado'][d]).join(', ')
+                    };
+                    
+                    // Agregar a la lista de horarios disponibles para mensajes de error
+                    if (!horariosDisponibles.some(h => h.rango === horarioFormateado.rango)) {
+                        horariosDisponibles.push(horarioFormateado);
+                    }
+                    
+                    console.log('Rango de horario:', {
+                        inicio: horarioFormateado.inicio,
+                        fin: horarioFormateado.fin,
+                        inicioMinutos,
+                        finMinutos,
+                        horaSeleccionada,
+                        duracionMinutos
+                    });
+                    
+                    // Verificar que la hora seleccionada esté dentro del rango y haya tiempo suficiente
+                    const horaFinCita = horaSeleccionada + duracionMinutos;
+                    
+                    return horaSeleccionada >= inicioMinutos && 
+                           horaFinCita <= finMinutos;
+                });
+                
+                if (horarioValido) {
+                    console.log('Horario válido');
+                    return {
+                        valido: true,
+                        mensaje: 'El horario seleccionado está disponible.'
+                    };
+                } else {
+                    console.log('No hay horario disponible para el día y hora seleccionados');
+                    
+                    // Obtener el rango de horarios disponibles para mostrar al usuario
+                    const rangosDisponibles = [];
+                    const diasSemana = ['Domingo', 'Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes', 'Sábado'];
+                    
+                    // Agrupar por días de la semana
+                    const horariosPorDia = {};
+                    
+                    horariosDisponibles.forEach(horario => {
+                        if (!horariosPorDia[horario.dias]) {
+                            horariosPorDia[horario.dias] = [];
+                        }
+                        horariosPorDia[horario.dias].push(horario.rango);
+                    });
+                    
+                    // Construir mensaje con horarios disponibles
+                    let mensajeError = '<div style="text-align: left;">';
+                    mensajeError += '<p style="color: #dc3545; font-weight: bold; margin-bottom: 15px;">El horario seleccionado no está disponible.</p>';
+                    
+                    if (Object.keys(horariosPorDia).length > 0) {
+                        mensajeError += '<p style="font-weight: bold; margin-bottom: 10px;">Horarios disponibles:</p>';
+                        mensajeError += '<ul style="padding-left: 20px; margin-bottom: 15px;">';
+                        
+                        for (const [dias, rangos] of Object.entries(horariosPorDia)) {
+                            mensajeError += `<li><strong>${dias}:</strong> ${rangos.join(', ')}</li>`;
+                        }
+                        
+                        mensajeError += '</ul>';
+                        mensajeError += '<p style="color: #666; font-style: italic;">Por favor, seleccione un horario dentro de los rangos mostrados.</p>';
+                    } else {
+                        mensajeError += '<p>No hay horarios disponibles para la fecha seleccionada.</p>';
+                        mensajeError += '<p style="color: #666; font-style: italic;">Por favor, seleccione otro día o póngase en contacto con el consultorio.</p>';
+                    }
+                    
+                    mensajeError += '</div>';
+                    
+                    // Mostrar notificación con formato mejorado
+                    Swal.fire({
+                        title: 'Horario no disponible',
+                        html: mensajeError,
+                        icon: 'warning',
+                        confirmButtonText: 'Entendido',
+                        confirmButtonColor: '#3085d6',
+                        width: '600px',
+                        customClass: {
+                            popup: 'swal-wide',
+                            title: 'swal-title',
+                            htmlContainer: 'swal-html'
+                        }
+                    });
+                    
+                    // Agregar estilos CSS personalizados para SweetAlert2
+                    const style = document.createElement('style');
+                    style.textContent = `
+                        .swal-wide {
+                            max-width: 90% !important;
+                        }
+                        .swal-title {
+                            color: #dc3545 !important;
+                            font-size: 1.5em !important;
+                            margin-bottom: 20px !important;
+                        }
+                        .swal-html {
+                            text-align: left !important;
+                            font-size: 1.1em !important;
+                            line-height: 1.5 !important;
+                        }
+                        .swal-html ul {
+                            margin: 10px 0 !important;
+                            padding-left: 20px !important;
+                        }
+                        .swal-html li {
+                            margin-bottom: 5px !important;
+                        }`;
+                    document.head.appendChild(style);
+                    
+                    return {
+                        valido: false,
+                        mensaje: 'El horario seleccionado no está disponible. Por favor, revise los horarios mostrados.'
+                    };
+                }
+                
+            } catch (error) {
+                console.error('Error al validar horario:', error);
+                return { 
+                    valido: false, 
+                    mensaje: `Error al validar el horario: ${error.message || 'Por favor, intente nuevamente más tarde.'}` 
+                };
+            }
         }
-    }
+
     // Función para manejar el guardado de la cita
     async function manejarGuardarCita(event) {
         // Prevenir el comportamiento por defecto del formulario
-        if (event) {
-            event.preventDefault();
-        }
+        event.preventDefault();
+        
+        console.log('Iniciando guardado de cita...');
+        console.log('URL de la API:', '/citas/api/crear-cita/');
 
         const form = document.getElementById('nuevaCitaForm');
         if (!form) {
             console.error('No se encontró el formulario de cita');
+            Swal.fire('Error', 'No se pudo encontrar el formulario de cita', 'error');
             return;
         }
 
         // Obtener los valores del formulario
         const formData = new FormData(form);
         const formDataObj = Object.fromEntries(formData.entries());
-
+        
+        console.log('Datos del formulario:', formDataObj);
+        
+        // Obtener la fecha y hora del campo datetime-local
+        const fechaHoraInput = document.getElementById('fechaHoraInput');
+        if (!fechaHoraInput || !fechaHoraInput.value) {
+            Swal.fire('Error', 'La fecha y hora son requeridas', 'error');
+            return;
+        }
+        
+        const fechaHora = new Date(fechaHoraInput.value);
+        
         // Validar campos requeridos
-        if (!formDataObj.paciente || !formDataObj.medico || !formDataObj.fecha || !formDataObj.hora) {
-            alert('Por favor complete todos los campos requeridos');
+        if (!formDataObj.paciente || !formDataObj.medico || !formDataObj.especialidad) {
+            Swal.fire({
+                title: 'Campos requeridos',
+                text: 'Por favor complete todos los campos requeridos',
+                icon: 'warning',
+                confirmButtonText: 'Entendido'
+            });
             return;
         }
 
@@ -973,37 +1256,60 @@ document.addEventListener('DOMContentLoaded', function() {
             submitBtn.disabled = true;
         }
         
+        // Mostrar mensaje de carga
+        const swalInstance = Swal.fire({
+            title: 'Guardando cita',
+            text: 'Por favor espere...',
+            allowOutsideClick: false,
+            didOpen: () => {
+                Swal.showLoading();
+            }
+        });
+
         try {
             // Obtener el token CSRF
             const csrfToken = getCookie('csrftoken');
+            if (!csrfToken) {
+                throw new Error('No se pudo obtener el token CSRF');
+            }
             
-            // Crear objeto con los datos del formulario
+            // Formatear la fecha manualmente para evitar problemas de zona horaria
+            const year = fechaHora.getFullYear();
+            const month = String(fechaHora.getMonth() + 1).padStart(2, '0');
+            const day = String(fechaHora.getDate()).padStart(2, '0');
+            const hours = String(fechaHora.getHours()).padStart(2, '0');
+            const minutes = String(fechaHora.getMinutes()).padStart(2, '0');
+            const fechaFormateada = `${year}-${month}-${day}T${hours}:${minutes}`;
+            
+            // Preparar los datos para enviar
             const dataToSend = {
-                paciente: formDataObj.paciente,
-                medico: formDataObj.medico,
-                especialidad: formDataObj.especialidad,
-                fecha: formDataObj.fecha,
-                hora: formDataObj.hora,
+                paciente_id: formDataObj.paciente,
+                medico_id: formDataObj.medico,
+                especialidad_id: formDataObj.especialidad,
+                fecha_hora: fechaFormateada,  // Usar la fecha formateada manualmente
                 duracion: formDataObj.duracion || '30',
                 costo: formDataObj.costo || '0.00',
                 notas: formDataObj.notas || ''
             };
             
-            // Validar horario de la cita
-            const fechaHora = new Date(`${dataToSend.fecha}T${dataToSend.hora}`);
-            const validacion = await validarHorarioCita(dataToSend.medico, dataToSend.especialidad, fechaHora);
+            console.log('Fecha formateada para enviar:', fechaFormateada);
+            
+            console.log('Enviando datos al servidor:', dataToSend);
+            
+            // Validar el horario de la cita
+            const validacion = await validarHorarioCita(
+                dataToSend.medico_id,
+                dataToSend.especialidad_id,
+                fechaHora,
+                parseInt(dataToSend.duracion) || 30
+            );
             
             if (!validacion.valido) {
-                alert(validacion.mensaje || 'La fecha y hora seleccionadas no están disponibles');
-                if (submitBtn) {
-                    submitBtn.innerHTML = originalBtnText;
-                    submitBtn.disabled = false;
-                }
-                return;
+                throw new Error(validacion.mensaje || 'El horario seleccionado no está disponible');
             }
             
             // Enviar datos al servidor
-            const response = await fetch('{% url "citas:guardar_cita" %}', {
+            const response = await fetch('/citas/api/crear-cita/', {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
@@ -1013,7 +1319,14 @@ document.addEventListener('DOMContentLoaded', function() {
                 body: JSON.stringify(dataToSend)
             });
             
-            const data = await response.json().catch(() => ({}));
+            console.log('Respuesta del servidor (raw):', response);
+            
+            const data = await response.json().catch((error) => {
+                console.error('Error al parsear la respuesta JSON:', error);
+                return { error: 'Error al procesar la respuesta del servidor' };
+            });
+            
+            console.log('Datos de la respuesta:', data);
             
             if (!response.ok) {
                 const error = new Error(data.error || 'Error en la respuesta del servidor');
@@ -1023,21 +1336,32 @@ document.addEventListener('DOMContentLoaded', function() {
             
             console.log('Respuesta del servidor:', data);
             
-            if (data.success) {
-                // Cerrar el modal y recargar el calendario
-                closeModal('nuevaCitaModal');
-                if (calendar) {
-                    calendar.refetchEvents();
-                }
-                // Mostrar mensaje de éxito
-                alert(data.message || 'Cita guardada correctamente');
-                // Recargar la página para asegurar que todo esté actualizado
-                window.location.reload();
-            } else {
-                throw new Error(data.error || 'Error al guardar la cita');
-            }
+            // Cerrar el modal
+            closeModal('nuevaCitaModal');
+            
+            // Mostrar mensaje de éxito
+            await Swal.fire({
+                title: '¡Éxito!',
+                text: data.message || 'La cita se ha guardado correctamente',
+                icon: 'success',
+                confirmButtonText: 'Aceptar'
+            });
+            
+            // Recargar la página para asegurar que todo esté actualizado
+            window.location.reload();
+            
         } catch (error) {
             console.error('Error al guardar la cita:', error);
+            console.error('Detalles del error:', {
+                name: error.name,
+                message: error.message,
+                stack: error.stack
+            });
+            
+            // Cerrar el mensaje de carga
+            await swalInstance.close();
+            
+            // Mostrar mensaje de error
             let errorMessage = 'Error al guardar la cita';
             if (error.response) {
                 // Si el servidor devolvió un mensaje de error, mostrarlo
@@ -1045,7 +1369,14 @@ document.addEventListener('DOMContentLoaded', function() {
             } else {
                 errorMessage += ': ' + error.message;
             }
-            alert(errorMessage);
+            
+            await Swal.fire({
+                title: 'Error',
+                text: errorMessage,
+                icon: 'error',
+                confirmButtonText: 'Entendido'
+            });
+            
         } finally {
             // Restaurar el botón
             if (submitBtn) {

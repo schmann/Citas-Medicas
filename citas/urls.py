@@ -46,9 +46,12 @@ urlpatterns = [
     path('consultorios/eliminar/<int:pk>/', login_required(ConsultorioDeleteView.as_view()), name='consultorio_delete'),
     path('consultorios/toggle-status/<int:pk>/', login_required(toggle_consultorio_status), name='consultorio_toggle_status'),
 
+    # URLs para la API de Citas
+    path('api/crear-cita/', csrf_exempt(views.crear_cita), name='crear_cita'),
+    
     # URLs para AJAX
-    path('ajax/obtener-pacientes/', views.obtener_pacientes, name='obtener_pacientes'),
-    path('ajax/obtener-medicos/', views.obtener_medicos, name='obtener_medicos'),
+    path('ajax/obtener-pacientes/', csrf_exempt(views.obtener_pacientes), name='obtener_pacientes'),
+    path('ajax/obtener-medicos/', csrf_exempt(views.obtener_medicos), name='obtener_medicos'),
     
     # URLs de Bancos
     path('bancos/', views.BancoListView.as_view(), name='banco_list'),
@@ -57,20 +60,16 @@ urlpatterns = [
     
     # URLs para el Calendario de Citas
     path('calendario/', views.calendario_view, name='calendario'),
-    path('api/crear_cita/', csrf_exempt(views.crear_cita), name='crear_cita'),
-    path('api/eventos/', views.obtener_eventos, name='obtener_eventos'),
+    path('api/eventos/', csrf_exempt(views.obtener_eventos), name='obtener_eventos'),
     
     # API para obtener especialidades de un médico
-    path('api/get-especialidades/<int:medico_id>/', views.get_especialidades_medico, name='get_especialidades_medico'),
+    path('api/get-especialidades/<int:medico_id>/', csrf_exempt(views.get_especialidades_medico), name='get_especialidades_medico'),
     path('bancos/eliminar/<int:pk>/', views.BancoDeleteView.as_view(), name='banco_delete'),
 
-    # AGREGAR ESTA RUTA PARA HORARIOS JSON
-    path('horarios-json/', views.horarios_json, name='horarios_json'),
+    # Ruta para horarios JSON
+    path('horarios-json/', csrf_exempt(views.horarios_json), name='horarios_json'),
     
     # Rutas para el calendario y gestión de citas
     path('agenda/', views.agenda_medico, name='agenda_medico'),
-    path('crear_cita/', views.crear_cita, name='crear_cita'),
-    path('guardar_cita/', views.guardar_cita, name='guardar_cita'),
-    path('calendario/', views.calendario_view, name='calendario'),
-    path('api/horarios-medico/<int:medico_id>/<int:especialidad_id>/', views.get_horarios_medico_especialidad, name='get_horarios_medico_especialidad'),
+    path('api/horarios-medico/<int:medico_id>/<int:especialidad_id>/', csrf_exempt(views.get_horarios_medico_especialidad), name='get_horarios_medico_especialidad'),
 ]
