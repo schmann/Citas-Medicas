@@ -51,6 +51,31 @@
     
     .fc {
         font-size: 0.9em;
+        margin-bottom: 20px;
+    }
+    
+    /* Estilos para la leyenda de colores */
+    .leyenda-estados {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 15px;
+        margin-top: 20px;
+        padding: 10px 0;
+        justify-content: center;
+    }
+    
+    .item-leyenda {
+        display: flex;
+        align-items: center;
+        gap: 5px;
+        font-size: 0.9em;
+    }
+    
+    .color-muestra {
+        width: 20px;
+        height: 20px;
+        border-radius: 3px;
+        border: 1px solid rgba(0,0,0,0.1);
     }
     
     .fc-toolbar-title {
@@ -183,6 +208,30 @@
 
     <div class="card">
         <div id="calendar"></div>
+        
+        <!-- Leyenda de colores -->
+        <div class="leyenda-estados">
+            <div class="item-leyenda">
+                <div class="color-muestra" style="background-color: #3498db;"></div>
+                <span>Pendiente</span>
+            </div>
+            <div class="item-leyenda">
+                <div class="color-muestra" style="background-color: #2ecc71;"></div>
+                <span>Confirmada</span>
+            </div>
+            <div class="item-leyenda">
+                <div class="color-muestra" style="background-color: #e74c3c;"></div>
+                <span>Cancelada</span>
+            </div>
+            <div class="item-leyenda">
+                <div class="color-muestra" style="background-color: #9b59b6;"></div>
+                <span>Completada</span>
+            </div>
+            <div class="item-leyenda">
+                <div class="color-muestra" style="background-color: #f39c12;"></div>
+                <span>En Progreso</span>
+            </div>
+        </div>
     </div>
 
 <!-- Modal para detalles de cita (Personalizado) -->
@@ -304,12 +353,55 @@ document.addEventListener('DOMContentLoaded', function() {
         eventosData = JSON.parse(jsonString);
     } catch (error) {
         // En caso de error, el log mostrará el string exacto que falló.
-        console.error('Error al cargar eventos: Falló JSON.parse (limpieza reforzada). Se restableció a array vacío.', error);
-        console.log('JSON String que causó el error (después de limpieza):', jsonString);
-        eventosData = [];
+        console.error('Error al parsear JSON de eventos:', error);
+        console.error('String que causó el error (después de limpieza):', jsonString);
+        eventosData = []; // Asignar un array vacío en caso de error
     }
 
     // INICIALIZAR CALENDARIO
+    // Función para asignar colores según el estado
+    function getEventColor(estado) {
+        const colores = {
+            'Pendiente': '#3498db',    // Azul
+            'Confirmada': '#2ecc71',   // Verde
+            'Cancelada': '#e74c3c',    // Rojo
+            'Completada': '#9b59b6',   // Morado
+            'En Progreso': '#f39c12'   // Naranja
+        };
+        return colores[estado] || null; // Sin color para estados no definidos
+    }
+
+    // Depuración: Mostrar los eventos cargados
+    console.log('Eventos cargados:', JSON.parse(JSON.stringify(eventosData)));
+
+    // Procesar eventos para asignar colores
+    const eventosConColores = eventosData.map(evento => {
+        // Depuración: Mostrar la estructura de cada evento
+        console.log('Procesando evento:', {
+            ...evento,
+            extendedProps: evento.extendedProps || {}
+        });
+        
+        const estado = (evento.extendedProps?.estado || 'Pendiente').trim();
+        const color = getEventColor(estado);
+        console.log(`Estado: "${estado}", Color:`, color);
+        
+        // Crear un nuevo objeto de evento con los estilos forzados
+        const nuevoEvento = {
+            ...evento,
+            color: color,
+            backgroundColor: color,
+            textColor: '#ffffff',
+            borderColor: color || 'rgba(0,0,0,0.2)',
+            display: 'block',
+            // Forzar estilos directamente
+            style: `background-color: ${color}; color: #ffffff; border-color: ${color || 'rgba(0,0,0,0.2)'};`
+        };
+        
+        console.log('Evento procesado:', nuevoEvento);
+        return nuevoEvento;
+    });
+
     calendar = new FullCalendar.Calendar(calendarEl, {
         initialView: 'dayGridMonth',
         locale: 'es',
@@ -318,7 +410,7 @@ document.addEventListener('DOMContentLoaded', function() {
             center: 'title',
             right: 'dayGridMonth,timeGridWeek,timeGridDay'
         },
-        events: eventosData,
+        events: eventosConColores,
         height: 'auto',
         contentHeight: 'auto',
         aspectRatio: 1.5, /* Proporción de aspecto para mejor visualización */
@@ -539,6 +631,30 @@ document.addEventListener('DOMContentLoaded', function() {
             });
         });
     }
+    
+    // Función para cargar las especialidades de un médico
+    function cargarEspecialidadesMedico(medicoId) {
+        return new Promise((resolve, reject) => {
+            if (!medicoId) {
+                resolve([]);
+                return;
+            }
+            
+            $.ajax({
+                url: `/citas/api/get-especialidades/${medicoId}/`,
+                type: 'GET',
+                dataType: 'json',
+                success: (especialidades) => {
+                    // La respuesta ya es el array de especialidades
+                    resolve(especialidades);
+                },
+                error: (xhr) => {
+                    console.error('Error al cargar especialidades:', xhr);
+                    resolve([]);
+                }
+            });
+        });
+    }
 
     // Función para mostrar el modal de nueva cita
     window.showNuevaCitaModal = async function() {
@@ -582,6 +698,13 @@ document.addEventListener('DOMContentLoaded', function() {
                         <label for="medicoSelect" class="font-weight-bold">Médico</label>
                         <select class="form-control" id="medicoSelect" name="medico" required>
                             ${medicosOptions}
+                        </select>
+                    </div>
+                    
+                    <div class="form-group" id="especialidadContainer" style="display: none;">
+                        <label for="especialidadSelect" class="font-weight-bold">Especialidad</label>
+                        <select class="form-control" id="especialidadSelect" name="especialidad" required>
+                            <option value="">Cargando especialidades...</option>
                         </select>
                     </div>
                     
@@ -654,45 +777,195 @@ document.addEventListener('DOMContentLoaded', function() {
             
             document.getElementById('fechaHoraInput').value = `${year}-${month}-${day}T${hours}:${minutes}`;
             
-            // Manejar el envío del formulario
-            document.getElementById('nuevaCitaForm').addEventListener('submit', function(e) {
-                e.preventDefault();
-                manejarGuardarCita(e);
+            // Manejar cambio de médico
+            document.getElementById('medicoSelect').addEventListener('change', async function() {
+                const medicoId = this.value;
+                const especialidadSelect = document.getElementById('especialidadSelect');
+                const especialidadContainer = document.getElementById('especialidadContainer');
+                
+                if (!medicoId) {
+                    especialidadContainer.style.display = 'none';
+                    return;
+                }
+                
+                // Mostrar cargando
+                especialidadContainer.style.display = 'block';
+                especialidadSelect.innerHTML = '<option value="">Cargando especialidades...</option>';
+                especialidadSelect.disabled = true;
+                
+                try {
+                    // Cargar especialidades del médico
+                    const especialidades = await cargarEspecialidadesMedico(medicoId);
+                    
+                    try {
+                        if (especialidades && especialidades.length > 0) {
+                            // Llenar el select con las especialidades
+                            let options = '<option value="">Seleccione una especialidad</option>';
+                            especialidades.forEach(especialidad => {
+                                options += `<option value="${especialidad.id}">${especialidad.nombre}</option>`;
+                            });
+                            especialidadSelect.innerHTML = options;
+                            especialidadSelect.disabled = false;
+                        } else {
+                            especialidadSelect.innerHTML = '<option value="">No hay especialidades disponibles</option>';
+                            especialidadSelect.disabled = true;
+                        }
+                    } catch (error) {
+                        console.error('Error al procesar las especialidades:', error);
+                        especialidadSelect.innerHTML = '<option value="">Error al procesar especialidades</option>';
+                        especialidadSelect.disabled = true;
+                    }
+                } catch (error) {
+                    console.error('Error al cargar especialidades:', error);
+                    especialidadSelect.innerHTML = '<option value="">Error al cargar especialidades</option>';
+                    especialidadSelect.disabled = true;
+                }
             });
-            
         } catch (error) {
-            console.error('Error al cargar datos:', error);
-            document.getElementById('nuevaCitaModalBody').innerHTML = `
-                <div class="alert alert-danger">
-                    <h5>Error al cargar los datos</h5>
-                    <p>${error.message || 'Ocurrió un error al cargar los datos necesarios. Por favor, intente de nuevo.'}</p>
-                    <div class="text-center mt-3">
-                        <button class="btn btn-secondary" onclick="closeModal('nuevaCitaModal')">Cerrar</button>
-                        <button class="btn btn-primary" onclick="showNuevaCitaModal()">Reintentar</button>
-                    </div>
-                </div>`;
+            console.error('Error al cargar especialidades:', error);
+            especialidadSelect.innerHTML = '<option value="">Error al cargar especialidades</option>';
+            especialidadSelect.disabled = true;
         }
+    }
     
+    async function validarHorarioCita(medicoId, especialidadId, fechaHora, duracionMinutos = 30) {
+        // 1. Validar parámetros de entrada
+        if (!medicoId || !especialidadId || !fechaHora || typeof duracionMinutos !== 'number' || duracionMinutos <= 0) {
+            console.error('Parámetros inválidos para validarHorarioCita:', { medicoId, especialidadId, fechaHora, duracionMinutos });
+            return {
+                valido: false,
+                mensaje: 'Datos de validación incompletos o duración inválida. Por favor, verifique los datos e intente nuevamente.'
+            };
+        }
+
+        try {
+            console.log('Validando horario para:', { medicoId, especialidadId, fechaHora });
+
+            // Paso 1.1: Fetch de Horarios
+            const response = await fetch(`/citas/api/horarios-medico/${medicoId}/${especialidadId}/`);
+
+            if (!response.ok) {
+                const errorData = await response.json().catch(() => ({}));
+                throw new Error(errorData.error || `Error ${response.status}: ${response.statusText}`);
+            }
+
+            const data = await response.json();
+            console.log('Datos de horarios recibidos:', data);
+
+            if (!data.horarios || !Array.isArray(data.horarios)) {
+                throw new Error('Formato de respuesta inválido: falta el arreglo de horarios');
+            }
+
+            // Paso 2. Procesamiento de la Fecha/Hora Seleccionada
+
+            // Usamos solo la hora/fecha proporcionada para ignorar la zona horaria local del cliente
+            // Esto asume que 'fechaHora' ya está en la zona horaria del servidor (clínica).
+            const fechaSeleccionada = new Date(fechaHora); 
+            
+            if (isNaN(fechaSeleccionada.getTime())) {
+                throw new Error('Fecha y hora inválidas');
+            }
+
+            // Mapeo Crítico del Día de la Semana: 
+            // JS getDay() va de 0 (Dom) a 6 (Sáb). Django/ISO usa 1 (Lun) a 7 (Dom).
+            let diaSemana = fechaSeleccionada.getDay(); // 0 (domingo) a 6 (sábado)
+            if (diaSemana === 0) {
+                diaSemana = 7; // Convertir Domingo (0) a 7
+            }
+
+            // Hora de la cita en minutos desde la medianoche
+            const horaInicioCitaMinutos = fechaSeleccionada.getHours() * 60 + fechaSeleccionada.getMinutes();
+            const horaFinCitaMinutos = horaInicioCitaMinutos + duracionMinutos;
+
+            // Paso 3. Verificar si hay algún horario que coincida
+            const horarioValido = data.horarios.some(horario => {
+                try {
+                    // Verificar campos necesarios
+                    if (!horario.dia_semana || !horario.hora_inicio || !horario.hora_fin) {
+                        console.warn('Horario con formato inválido:', horario);
+                        return false;
+                    }
+                    
+                    // 3.1. Validación del Día de la Semana
+                    // Asumimos que 'dia_semana' viene como un entero (1-7) del backend, 
+                    // ya que su modelo Django usa un entero.
+                    if (horario.dia_semana !== diaSemana) {
+                        return false;
+                    }
+                    
+                    // 3.2. Validación del Rango de Hora
+                    const inicioPartes = horario.hora_inicio.split(':');
+                    const finPartes = horario.hora_fin.split(':');
+                    
+                    // Convertir hora de inicio y fin del turno a minutos
+                    const horaInicioTurno = parseInt(inicioPartes[0], 10);
+                    const minutoInicioTurno = parseInt(inicioPartes[1], 10);
+                    const horaFinTurno = parseInt(finPartes[0], 10);
+                    const minutoFinTurno = parseInt(finPartes[1], 10);
+                    
+                    const inicioMinutos = horaInicioTurno * 60 + minutoInicioTurno;
+                    const finMinutos = horaFinTurno * 60 + minutoFinTurno;
+
+                    // VALIDACIÓN CRÍTICA:
+                    // 1. La hora de inicio de la cita debe ser mayor o igual que la hora de inicio del turno.
+                    // 2. La hora de FIN de la cita (inicio + duración) debe ser menor o igual que la hora de fin del turno.
+                    const inicioValido = horaInicioCitaMinutos >= inicioMinutos;
+                    const finValido = horaFinCitaMinutos <= finMinutos;
+
+                    return inicioValido && finValido;
+                    
+                }
+                 catch (error) {
+                    console.error('Error al procesar horario:', error, 'Horario:', horario);
+                    return false;
+                }
+            });
+
+            // Paso 4. Devolver Resultado
+            if (!horarioValido) {
+                return {
+                    valido: false,
+                    mensaje: 'La fecha y hora seleccionadas, incluyendo la duración, exceden el horario laboral del médico. Por favor, seleccione un bloque de tiempo que encaje en el turno.'
+                };
+            }
+
+            return { valido: true };
+
+        } 
+        catch (error) {
+            console.error('Error al validar horario:', error);
+            return {
+                valido: false,
+                mensaje: `Error al validar el horario: ${error.message || 'Por favor, intente nuevamente más tarde.'}`
+            };
+        }
+    }
     // Función para manejar el guardado de la cita
-    function manejarGuardarCita(event) {
+    async function manejarGuardarCita(event) {
         // Prevenir el comportamiento por defecto del formulario
         if (event) {
             event.preventDefault();
         }
-        
+
         const form = document.getElementById('nuevaCitaForm');
         if (!form) {
-            console.error('No se encontró el formulario de nueva cita');
+            console.error('No se encontró el formulario de cita');
             return;
         }
-        
+
+        // Obtener los valores del formulario
+        const formData = new FormData(form);
+        const formDataObj = Object.fromEntries(formData.entries());
+
+        // Validar campos requeridos
+        if (!formDataObj.paciente || !formDataObj.medico || !formDataObj.fecha || !formDataObj.hora) {
+            alert('Por favor complete todos los campos requeridos');
+            return;
+        }
+
+        // Obtener el botón de envío
         const submitBtn = form.querySelector('button[type="submit"]');
         const originalBtnText = submitBtn ? submitBtn.innerHTML : '';
-        
-        if (!form.checkValidity()) {
-            form.reportValidity();
-            return;
-        }
         
         // Mostrar loading
         if (submitBtn) {
@@ -700,61 +973,56 @@ document.addEventListener('DOMContentLoaded', function() {
             submitBtn.disabled = true;
         }
         
-        // Obtener datos del formulario
-        const formData = new FormData(form);
-        const formDataObj = {
-            paciente: formData.get('paciente'),
-            medico: formData.get('medico'),
-            fecha_hora: formData.get('fecha_hora'),
-            duracion: formData.get('duracion') || '30',  // Valor por defecto 30 minutos
-            costo: formData.get('costo') || '0.00',      // Valor por defecto 0.00
-            notas: formData.get('notas') || ''           // Notas opcionales
-        };
-        
-        console.log('Datos a enviar:', formDataObj);
-        
-        // Agregar el token CSRF
-        const csrfToken = getCookie('csrftoken');
-        
-        // Validar campos requeridos
-        if (!formDataObj.paciente || !formDataObj.medico || !formDataObj.fecha_hora) {
-            alert('Por favor complete todos los campos requeridos');
-            if (submitBtn) {
-                submitBtn.innerHTML = originalBtnText;
-                submitBtn.disabled = false;
+        try {
+            // Obtener el token CSRF
+            const csrfToken = getCookie('csrftoken');
+            
+            // Crear objeto con los datos del formulario
+            const dataToSend = {
+                paciente: formDataObj.paciente,
+                medico: formDataObj.medico,
+                especialidad: formDataObj.especialidad,
+                fecha: formDataObj.fecha,
+                hora: formDataObj.hora,
+                duracion: formDataObj.duracion || '30',
+                costo: formDataObj.costo || '0.00',
+                notas: formDataObj.notas || ''
+            };
+            
+            // Validar horario de la cita
+            const fechaHora = new Date(`${dataToSend.fecha}T${dataToSend.hora}`);
+            const validacion = await validarHorarioCita(dataToSend.medico, dataToSend.especialidad, fechaHora);
+            
+            if (!validacion.valido) {
+                alert(validacion.mensaje || 'La fecha y hora seleccionadas no están disponibles');
+                if (submitBtn) {
+                    submitBtn.innerHTML = originalBtnText;
+                    submitBtn.disabled = false;
+                }
+                return;
             }
-            return;
-        }
-        
-        // Crear FormData para el envío
-        const formDataToSend = new FormData();
-        formDataToSend.append('paciente', formDataObj.paciente);
-        formDataToSend.append('medico', formDataObj.medico);
-        formDataToSend.append('fecha_hora', formDataObj.fecha_hora);
-        formDataToSend.append('duracion', formDataObj.duracion);
-        formDataToSend.append('costo', formDataObj.costo);
-        formDataToSend.append('notas', formDataObj.notas);
-        
-        // Enviar datos al servidor
-        fetch('{% url "citas:guardar_cita" %}', {
-            method: 'POST',
-            headers: {
-                'X-CSRFToken': csrfToken,
-                'X-Requested-With': 'XMLHttpRequest'
-            },
-            body: formDataToSend
-        })
-        .then(async response => {
+            
+            // Enviar datos al servidor
+            const response = await fetch('{% url "citas:guardar_cita" %}', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-CSRFToken': csrfToken,
+                    'X-Requested-With': 'XMLHttpRequest'
+                },
+                body: JSON.stringify(dataToSend)
+            });
+            
             const data = await response.json().catch(() => ({}));
+            
             if (!response.ok) {
                 const error = new Error(data.error || 'Error en la respuesta del servidor');
                 error.response = data;
                 throw error;
             }
-            return data;
-        })
-        .then(data => {
+            
             console.log('Respuesta del servidor:', data);
+            
             if (data.success) {
                 // Cerrar el modal y recargar el calendario
                 closeModal('nuevaCitaModal');
@@ -768,8 +1036,7 @@ document.addEventListener('DOMContentLoaded', function() {
             } else {
                 throw new Error(data.error || 'Error al guardar la cita');
             }
-        })
-        .catch(error => {
+        } catch (error) {
             console.error('Error al guardar la cita:', error);
             let errorMessage = 'Error al guardar la cita';
             if (error.response) {
@@ -779,15 +1046,13 @@ document.addEventListener('DOMContentLoaded', function() {
                 errorMessage += ': ' + error.message;
             }
             alert(errorMessage);
-        })
-        .finally(() => {
+        } finally {
             // Restaurar el botón
             if (submitBtn) {
                 submitBtn.innerHTML = originalBtnText;
                 submitBtn.disabled = false;
             }
-        });
-    }
-    }
+        }
+    } // Fin de la función manejarGuardarCita
 </script>
 {% endblock %}

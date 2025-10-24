@@ -693,6 +693,64 @@ def guardar_cita(request):
             status=500
         )
 
+def get_horarios_medico_especialidad(request, medico_id, especialidad_id):
+    """Obtiene los horarios de un médico para una especialidad específica"""
+    try:
+        from django.utils import timezone
+        from datetime import datetime, time as datetime_time
+        
+        # Obtener horarios activos del médico para la especialidad
+        horarios = HorarioCita.objects.filter(
+            medico_id=medico_id,
+            especialidad_id=especialidad_id,
+            activo=True,
+            end_datetime__gte=timezone.now()
+        ).order_by('start_datetime')
+        
+        # Mapeo de días de la semana según la regla de recurrencia
+        dias_semana_map = {
+            'MO': 1,  # Lunes
+            'TU': 2,  # Martes
+            'WE': 3,  # Miércoles
+            'TH': 4,  # Jueves
+            'FR': 5,  # Viernes
+            'SA': 6,  # Sábado
+            'SU': 0   # Domingo
+        }
+        
+        # Formatear la respuesta
+        horarios_data = []
+        for horario in horarios:
+            # Extraer días de la semana de la regla de recurrencia
+            dias_semana = []
+            if horario.recurrence_rule and 'BYDAY=' in horario.recurrence_rule:
+                try:
+                    # Extraer la parte de BYDAY de la regla de recurrencia
+                    byday_part = [p for p in horario.recurrence_rule.split(';') if 'BYDAY=' in p][0]
+                    dias_rrule = byday_part.split('=')[1].split(',')
+                    
+                    # Convertir a números de día de la semana (0-6)
+                    dias_semana = [dias_semana_map[dia] for dia in dias_rrule if dia in dias_semana_map]
+                except Exception as e:
+                    print(f"Error al procesar regla de recurrencia: {e}")
+            
+            horarios_data.append({
+                'id': horario.id,
+                'start_time': horario.start_datetime.time().strftime('%H:%M'),
+                'end_time': horario.end_datetime.time().strftime('%H:%M'),
+                'dias_semana': dias_semana,
+                'fecha_inicio': horario.start_datetime.date().isoformat(),
+                'fecha_fin': horario.end_datetime.date().isoformat() if horario.end_datetime else None,
+                'recurrence_rule': horario.recurrence_rule
+            })
+            
+        return JsonResponse({'horarios': horarios_data}, safe=False)
+        
+    except Exception as e:
+        import traceback
+        traceback.print_exc()
+        return JsonResponse({'error': str(e)}, status=500)
+
 def horarios_json(request):
     """Versión que respeta la fecha UNTIL del RRULE"""
     try:

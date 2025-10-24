@@ -72,4 +72,5 @@ urlpatterns = [
     path('crear_cita/', views.crear_cita, name='crear_cita'),
     path('guardar_cita/', views.guardar_cita, name='guardar_cita'),
     path('calendario/', views.calendario_view, name='calendario'),
+    path('api/horarios-medico/<int:medico_id>/<int:especialidad_id>/', views.get_horarios_medico_especialidad, name='get_horarios_medico_especialidad'),
 ]
