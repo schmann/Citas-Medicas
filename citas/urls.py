@@ -47,7 +47,11 @@ urlpatterns = [
     path('consultorios/toggle-status/<int:pk>/', login_required(toggle_consultorio_status), name='consultorio_toggle_status'),
 
     # URLs para la API de Citas
-    path('api/crear-cita/', csrf_exempt(views.crear_cita), name='crear_cita'),
+    path('api/pacientes/', csrf_exempt(views.obtener_pacientes), name='obtener_pacientes'),
+    path('api/cancelar-cita/<int:cita_id>/', csrf_exempt(views.cancelar_cita), name='cancelar_cita'),
+    
+    # Nuevo calendario mejorado
+    path('calendario-nuevo/', login_required(views.calendario_nuevo_view), name='calendario_nuevo'),
     
     # URLs para AJAX
     path('ajax/obtener-pacientes/', csrf_exempt(views.obtener_pacientes), name='obtener_pacientes'),
@@ -72,4 +76,17 @@ urlpatterns = [
     # Rutas para el calendario y gestión de citas
     path('agenda/', views.agenda_medico, name='agenda_medico'),
     path('api/horarios-medico/<int:medico_id>/<int:especialidad_id>/', csrf_exempt(views.get_horarios_medico_especialidad), name='get_horarios_medico_especialidad'),
+    path('prueba/', views.prueba_template, name='prueba_template'),
+
+     # URLs para el calendario con disponibilidad
+    path('calendario-nuevo/', views.calendario_nuevo_view, name='calendario_nuevo'),
+    path('api/obtener-citas-y-disponibilidad/', views.obtener_citas_y_disponibilidad, name='obtener_citas_y_disponibilidad'),
+    path('api/obtener-horas-disponibles/<int:medico_id>/<int:especialidad_id>/<str:fecha>/', views.obtener_horas_disponibles, name='obtener_horas_disponibles'),
+    path('api/crear-cita/', views.crear_cita, name='crear_cita'),
+
+    # API para obtener eventos (citas y disponibilidad)
+    path('api/eventos/', csrf_exempt(views.obtener_eventos), name='obtener_eventos'),
+    
+    # NUEVA RUTA API PARA GUARDAR CITAS (con validación estricta)
+    path('api/guardar-cita/', csrf_exempt(views.guardar_cita), name='guardar_cita'),
 ]

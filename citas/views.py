@@ -5,18 +5,21 @@ import traceback
 from django.shortcuts import render, redirect, get_object_or_404
 from django.http import JsonResponse, HttpResponseBadRequest, HttpResponse
 from django.views.decorators.http import require_http_methods
+from django.views.decorators.csrf import csrf_exempt
 from django.db.models import Q
 from django.contrib.auth.decorators import login_required
 from rest_framework.decorators import api_view, permission_classes
 from rest_framework.permissions import AllowAny
 from rest_framework.response import Response
 from django.contrib.auth import get_user_model
-from datetime import datetime
+from datetime import datetime, timedelta
+import json
 
 from .forms import RegistroPacienteForm
 from .models import (
     Ciudad, Municipio, Parroquia, Estado, Pais,
-    EspecialidadMedica, HorarioCita, MedicoEspecialidad
+    EspecialidadMedica, HorarioCita, MedicoEspecialidad,
+    CitasReservadas, Paciente, UsuarioMedico
 )
 from .forms import EspecialidadMedicaForm
 from django.contrib import messages
@@ -32,20 +35,60 @@ from .models import MedicoEspecialidad, Banco
 from .forms import BancoForm
 import datetime 
 from django.utils import timezone 
-from dateutil import rrule # Importar rrule
-from datetime import datetime, timedelta  # ✅ Agregar timedelta
+from dateutil import rrule
 import pytz
 from django.contrib.admin.views.decorators import staff_member_required
 from django.views.decorators.csrf import csrf_exempt
 from django.http import JsonResponse
 from django.db import transaction
 from django.core import serializers
-import json
 
 # -------------------------------------------------------------
 # VISTAS PRINCIPALES
 # -------------------------------------------------------------
 
+def calendario_nuevo_view(request):
+    """
+    Vista para el nuevo calendario de citas con interfaz mejorada.
+    """
+    # Verificar si el usuario está autenticado
+    if not request.user.is_authenticated:
+        return redirect('admin:login')
+    
+    # Obtener la fecha actual
+    hoy = timezone.now().date()
+    
+    # Obtener solo los pacientes (sin filtros adicionales)
+    try:
+        print("\n=== CARGANDO PACIENTES ===")
+        
+        # Obtener todos los pacientes
+        pacientes = Paciente.objects.all()
+        print(f"Total de pacientes en la base de datos: {pacientes.count()}")
+        
+        # Mostrar información de los primeros 5 pacientes
+        print("\nEjemplos de pacientes (primeros 5):")
+        for p in pacientes[:5]:
+            print(f"ID: {p.id_Paciente}, "
+                  f"Nombre: {p.Nombres_Paciente} {getattr(p, 'Apellidos_Paciente', '')}, "
+                  f"Cédula: {getattr(p, 'CIDNI', 'N/A')}")
+        
+    except Exception as e:
+        print(f"\n¡ERROR al cargar pacientes: {str(e)}")
+        import traceback
+        traceback.print_exc()
+        pacientes = Paciente.objects.none()
+    
+    # Crear contexto con solo los datos necesarios
+    context = {
+        'title': 'Nuevo Calendario de Citas',
+        'hoy': hoy,
+        'pacientes': pacientes,  # Lista de objetos Paciente
+        'opts': {'app_label': 'citas'},
+    }
+    
+    return render(request, 'citas/reservas/calendario_nuevo.html', context)
+    
 def registrar_paciente(request):
     if request.method == 'POST':
         form = RegistroPacienteForm(request.POST)
@@ -412,16 +455,29 @@ class BancoDeleteView(DeleteView):
 
 def obtener_pacientes(request):
     """
-    Vista para obtener la lista de pacientes activos en formato JSON
+    Vista para obtener la lista de pacientes en formato JSON
     """
-    from .models import Paciente
-    
     try:
-        pacientes = Paciente.objects.filter(Activo=True).values('id_Paciente', 'Nombres_Paciente', 'Apellidos_Paciente')
-        pacientes_list = list(pacientes)
-        return JsonResponse({'pacientes': pacientes_list}, status=200)
+        pacientes = list(Paciente.objects.all().values(
+            'id_Paciente', 
+            'Nombres_Paciente', 
+            'Apellidos_Paciente', 
+            'CIDNI',
+            'Activo'
+        ).order_by('Apellidos_Paciente', 'Nombres_Paciente'))
+        
+        return JsonResponse({
+            'status': 'success', 
+            'pacientes': pacientes,
+            'count': len(pacientes)
+        })
     except Exception as e:
-        return JsonResponse({'error': str(e)}, status=500)
+        import traceback
+        traceback.print_exc()
+        return JsonResponse({
+            'status': 'error', 
+            'message': f'Error al obtener pacientes: {str(e)}'
+        }, status=500)
 
 def obtener_medicos(request):
     """
@@ -445,7 +501,7 @@ def obtener_medicos(request):
 # -------------------------------------------------------------
 
 def calendario_view(request):
-    from .models import Paciente, UsuarioMedico, EspecialidadMedica, Cita
+    from .models import Paciente, UsuarioMedico, EspecialidadMedica, CitasReservadas
     import json
     from datetime import timedelta
     
@@ -454,8 +510,8 @@ def calendario_view(request):
     medicos = UsuarioMedico.objects.filter(activo=True).order_by('Apellidos_Medicos', 'Nombres_Medico')
     especialidades = EspecialidadMedica.objects.all().order_by('Espacialidad_Medica')
     
-    # Obtener citas para el calendario
-    citas = Cita.objects.select_related('paciente', 'medico', 'especialidad').all()
+    # Obtener citas para el calendario - USAR CitasReservadas
+    citas = CitasReservadas.objects.select_related('paciente', 'horario__medico', 'horario__especialidad').all()
     
     # Preparar los eventos para el calendario
     eventos = []
@@ -463,14 +519,14 @@ def calendario_view(request):
         eventos.append({
             'id': cita.id,
             'title': f"{cita.paciente.Nombres_Paciente} {cita.paciente.Apellidos_Paciente}",
-            'start': cita.fecha_hora.isoformat(),
-            'end': (cita.fecha_hora + timedelta(minutes=cita.duracion)).isoformat(),
+            'start': cita.start_datetime.isoformat(),
+            'end': cita.end_datetime.isoformat(),
             'estado': cita.estado,
             'paciente': f"{cita.paciente.Nombres_Paciente} {cita.paciente.Apellidos_Paciente}",
-            'medico': f"{cita.medico.Nombres_Medico} {cita.medico.Apellidos_Medicos}",
-            'especialidad': cita.especialidad.Espacialidad_Medica if cita.especialidad else '',
-            'notas': cita.notas or '',
-            'color': get_estado_color(cita.estado)
+            'medico': f"{cita.horario.medico.Nombres_Medico} {cita.horario.medico.Apellidos_Medicos}",
+            'especialidad': cita.horario.especialidad.Espacialidad_Medica if cita.horario.especialidad else '',
+            'notas': cita.nota or '',
+            'color': get_color_estado(cita.estado)
         })
     
     # Convertir a JSON seguro para JavaScript
@@ -520,7 +576,7 @@ def crear_cita(request):
             return JsonResponse({'error': error_msg}, status=400)
         
         # Validar datos requeridos
-        required_fields = ['paciente_id', 'medico_id', 'especialidad_id', 'fecha_hora', 'duracion']
+        required_fields = ['paciente_id', 'medico_id', 'especialidad_id', 'fecha', 'hora', 'duracion']
         missing_fields = [field for field in required_fields if field not in data]
         
         if missing_fields:
@@ -571,17 +627,17 @@ def crear_cita(request):
         # Convertir la fecha y hora de string a objeto datetime
         try:
             print("\n=== PROCESANDO FECHA Y HORA ===")
-            print(f"Fecha/hora recibida: {data['fecha_hora']}")
+            print(f"Fecha recibida: {data['fecha']}")
+            print(f"Hora recibida: {data['hora']}")
             print(f"Duración recibida: {data['duracion']} minutos")
             
-            # Intentar con diferentes formatos de fecha
-            fecha_hora_str = data['fecha_hora']
+            # Combinar fecha y hora
+            fecha_hora_str = f"{data['fecha']} {data['hora']}"
             formatos_fecha = [
-                '%Y-%m-%dT%H:%M',  # Formato estándar
-                '%Y-%m-%d %H:%M',  # Formato alternativo
-                '%Y-%m-%dT%H:%M:%S',  # Con segundos
-                '%Y-%m-%d %H:%M:%S',  # Con segundos y espacio
-                '%Y-%m-%dT%H:%M:%S.%fZ'  # Formato ISO con milisegundos y Z
+                '%Y-%m-%d %H:%M:%S',
+                '%Y-%m-%d %H:%M',
+                '%Y-%m-%dT%H:%M:%S',
+                '%Y-%m-%dT%H:%M'
             ]
             
             fecha_hora = None
@@ -593,7 +649,7 @@ def crear_cita(request):
                     continue
             
             if fecha_hora is None:
-                raise ValueError(f"No se pudo parsear la fecha: {fecha_hora_str}")
+                raise ValueError(f"No se pudo parsear la fecha y hora: {fecha_hora_str}")
                 
             # Asegurarse de que la fecha sea consciente de la zona horaria
             if timezone.is_naive(fecha_hora):
@@ -607,7 +663,7 @@ def crear_cita(request):
             print(f"Zona horaria: {fecha_hora.tzinfo}")
             
         except ValueError as e:
-            error_msg = f'Formato de fecha o duración inválido: {str(e)}. Formato esperado: YYYY-MM-DDTHH:MM'
+            error_msg = f'Formato de fecha o duración inválido: {str(e)}. Formato esperado: YYYY-MM-DD HH:MM'
             print(f"ERROR: {error_msg}")
             return JsonResponse({'error': error_msg}, status=400)
         except TypeError as e:
@@ -621,85 +677,74 @@ def crear_cita(request):
             print(traceback.format_exc())
             return JsonResponse({'error': error_msg}, status=400)
         
-        # Crear el horario de cita si no existe
-        print("\n=== CREANDO O OBTENIENDO HORARIO DE CITA ===")
-        try:
-            horario, created = HorarioCita.objects.get_or_create(
-                medico=medico,
-                especialidad=especialidad,
-                defaults={
-                    'start_datetime': fecha_hora,
-                    'end_datetime': fecha_hora_fin,
-                    'activo': True,
-                    'notas': data.get('notas', '')
-                }
-            )
-            
-            if created:
-                print(f"Nuevo horario creado con ID: {horario.id}")
-            else:
-                print(f"Horario existente encontrado con ID: {horario.id}")
-                
-        except Exception as e:
-            error_msg = f'Error al crear/obtener el horario: {str(e)}'
-            print(f"ERROR: {error_msg}")
-            return JsonResponse({'error': error_msg}, status=500)
-        
-        # Verificar si ya existe una cita en ese horario
-        print("\n=== VERIFICANDO CITAS EXISTENTES ===")
+        # Verificar si ya existe una cita en el mismo horario
+        print("\n=== VERIFICANDO DISPONIBILIDAD ===")
         try:
             # Verificar si hay citas que se solapen con el horario solicitado
+            # Usamos horario__medico ya que horario es una relación con la tabla horarios_citas
             cita_existente = CitasReservadas.objects.filter(
-                horario=horario,
-                paciente=paciente,
+                horario__medico=medico,  # Accedemos al médico a través de la relación horario
                 start_datetime__lt=fecha_hora_fin,
-                end_datetime__gt=fecha_hora
+                end_datetime__gt=fecha_hora,
+                estado__in=['pendiente', 'confirmada']
             ).exists()
             
             if cita_existente:
-                error_msg = 'Ya existe una cita programada para este paciente que se solapa con el horario solicitado'
+                error_msg = 'Ya existe una cita programada en el horario seleccionado.'
                 print(f"ERROR: {error_msg}")
-                return JsonResponse({
-                    'error': error_msg,
-                    'success': False
-                }, status=400)
-                
-            print("No se encontraron citas duplicadas o solapadas")
+                return JsonResponse({'error': error_msg}, status=400)
+            
+            # Buscar un horario existente o crear uno temporal
+            # Necesitamos un horario_id para la relación foránea
+            horario = HorarioCita.objects.filter(
+                medico=medico,
+                especialidad=especialidad,
+                activo=True
+            ).first()
+            
+            if not horario:
+                # Si no existe un horario, creamos uno temporal
+                horario = HorarioCita(
+                    medico=medico,
+                    especialidad=especialidad,
+                    start_datetime=fecha_hora,
+                    end_datetime=fecha_hora_fin,
+                    activo=True
+                )
+                horario.save()
+                print(f"✅ Horario temporal creado: {horario.id}")
+            
+            # Crear la cita en citas_reservadas
+            print("\n=== CREANDO CITA ===")
+            cita = CitasReservadas(
+                horario=horario,  # Asignamos el horario encontrado o creado
+                paciente=paciente,
+                start_datetime=fecha_hora,
+                end_datetime=fecha_hora_fin,
+                estado='pendiente',
+                nota=data.get('notas', ''),
+                costo=float(data.get('costo', 0.00)) if data.get('costo') else 0.00
+            )
+            cita.save()
+            print(f"✅ Cita creada exitosamente con ID: {cita.id}")
+            
+            # Devolver respuesta exitosa
+            return JsonResponse({
+                'success': True,
+                'cita_id': cita.id,
+                'mensaje': 'Cita creada exitosamente',
+                'fecha': fecha_hora.strftime('%Y-%m-%d'),
+                'hora': fecha_hora.strftime('%H:%M'),
+                'medico': f"{medico.Nombres_Medico} {medico.Apellidos_Medicos}",
+                'especialidad': especialidad.Espacialidad_Medica
+            })
                 
         except Exception as e:
-            error_msg = f'Error al verificar citas existentes: {str(e)}'
+            error_msg = f'Error al procesar la solicitud: {str(e)}'
             print(f"ERROR: {error_msg}")
+            import traceback
+            print(traceback.format_exc())
             return JsonResponse({'error': error_msg}, status=500)
-            
-        # Crear la cita reservada
-        print("\n=== CREANDO NUEVA CITA ===")
-        try:
-            cita_data = {
-                'horario': horario,
-                'paciente': paciente,
-                'start_datetime': fecha_hora,
-                'end_datetime': fecha_hora_fin,
-                'estado': 'pendiente',
-                'nota': data.get('notas', ''),  # Asegurando que el campo coincida con el modelo
-                'costo': float(data.get('costo', 0.00)) if data.get('costo') else 0.00
-            }
-            
-            # Asegurarse de que los campos requeridos no sean None
-            for field in ['horario', 'paciente', 'start_datetime', 'end_datetime']:
-                if cita_data[field] is None:
-                    error_msg = f'El campo {field} es requerido y no puede ser nulo'
-                    print(f"ERROR: {error_msg}")
-                    return JsonResponse({'error': error_msg}, status=400)
-            
-            print("Datos para crear la cita:", json.dumps({
-                'horario_id': horario.id,
-                'paciente_id': paciente.id_Paciente,
-                'start_datetime': fecha_hora.isoformat(),
-                'end_datetime': fecha_hora_fin.isoformat(),
-                'estado': 'pendiente',
-                'nota': data.get('notas', ''),
-                'costo': float(data.get('costo', 0.00)) if data.get('costo') else 0.00
-            }, indent=2, default=str))
             
             try:
                 cita = CitasReservadas.objects.create(**cita_data)
@@ -725,25 +770,6 @@ def crear_cita(request):
                     import traceback
                     print("Traceback:", ''.join(traceback.format_tb(e.__traceback__)))
                 return JsonResponse({'error': error_msg}, status=500)
-            
-            response_data = {
-                'success': True,
-                'cita_id': cita.id,
-                'message': 'Cita creada exitosamente',
-                'data': {
-                    'paciente': f"{paciente.Nombres_Paciente} {paciente.Apellidos_Paciente}",
-                    'medico': f"{medico.Nombres_Medico} {medico.Apellidos_Medicos}",
-                    'especialidad': str(especialidad.Espacialidad_Medica),
-                    'fecha_hora': fecha_hora.strftime('%Y-%m-%d %H:%M'),
-                    'duracion': duracion,
-                    'estado': 'pendiente'
-                }
-            }
-            
-            print("\n=== RESPUESTA DEL SERVIDOR ===")
-            print(json.dumps(response_data, indent=2, default=str))
-            
-            return JsonResponse(response_data)
             
         except Exception as e:
             import traceback
@@ -782,11 +808,50 @@ def crear_cita(request):
         print(json.dumps(response_data, indent=2, default=str))
         return JsonResponse(response_data, status=500)
 
+@csrf_exempt
+def cancelar_cita(request, cita_id):
+    """
+    Cancela una cita existente.
+    
+    Args:
+        request: Objeto de solicitud HTTP
+        cita_id: ID de la cita a cancelar
+        
+    Returns:
+        JsonResponse: Resultado de la operación
+    """
+    try:
+        # Obtener la cita o devolver 404 si no existe
+        cita = CitasReservadas.objects.get(id=cita_id)
+        
+        # Cambiar el estado a 'cancelada'
+        cita.estado = 'cancelada'
+        cita.save()
+        
+        return JsonResponse({
+            'success': True,
+            'message': 'Cita cancelada exitosamente',
+            'cita_id': cita.id,
+            'nuevo_estado': 'cancelada'
+        })
+        
+    except CitasReservadas.DoesNotExist:
+        return JsonResponse({
+            'success': False,
+            'error': f'No se encontró la cita con ID {cita_id}'
+        }, status=404)
+        
+    except Exception as e:
+        return JsonResponse({
+            'success': False,
+            'error': f'Error al cancelar la cita: {str(e)}'
+        }, status=500)
+
 def obtener_eventos(request):
     """
     Vista para obtener los eventos del calendario en formato JSON.
     """
-    from .models import Cita
+    from .models import CitasReservadas
     
     try:
         # Obtener parámetros de filtrado (opcional)
@@ -794,13 +859,13 @@ def obtener_eventos(request):
         end = request.GET.get('end')
         
         # Construir el queryset base
-        queryset = Cita.objects.select_related('paciente', 'medico__usuario', 'especialidad')
+        queryset = CitasReservadas.objects.select_related('paciente', 'horario__medico', 'horario__especialidad')
         
         # Filtrar por rango de fechas si se proporciona
         if start and end:
             queryset = queryset.filter(
-                fecha_hora__gte=start,
-                fecha_hora__lte=end
+                start_datetime__gte=start,
+                start_datetime__lte=end
             )
         
         # Convertir a formato FullCalendar
@@ -808,17 +873,17 @@ def obtener_eventos(request):
         for cita in queryset:
             eventos.append({
                 'id': cita.id,
-                'title': f"{cita.paciente.nombres} {cita.paciente.apellidos}",
-                'start': cita.fecha_hora.isoformat(),
-                'end': (cita.fecha_hora + datetime.timedelta(minutes=cita.duracion)).isoformat(),
+                'title': f"{cita.paciente.Nombres_Paciente} {cita.paciente.Apellidos_Paciente}",
+                'start': cita.start_datetime.isoformat(),
+                'end': cita.end_datetime.isoformat(),
                 'extendedProps': {
-                    'paciente': f"{cita.paciente.nombres} {cita.paciente.apellidos}",
-                    'medico': cita.medico.usuario.get_full_name() if cita.medico.usuario else str(cita.medico),
-                    'especialidad': cita.especialidad.Espacialidad_Medica if cita.especialidad else '',
+                    'paciente': f"{cita.paciente.Nombres_Paciente} {cita.paciente.Apellidos_Paciente}",
+                    'medico': f"{cita.horario.medico.Nombres_Medico} {cita.horario.medico.Apellidos_Medicos}",
+                    'especialidad': cita.horario.especialidad.Espacialidad_Medica if cita.horario.especialidad else '',
                     'estado': cita.estado,
-                    'notas': cita.notas or '',
+                    'notas': cita.nota or '',
                 },
-                'color': get_estado_color(cita.estado),
+                'color': get_color_estado(cita.estado),
                 'textColor': '#ffffff'
             })
         
@@ -830,10 +895,11 @@ def obtener_eventos(request):
 def get_estado_color(estado):
     """Devuelve un color según el estado de la cita"""
     colores = {
-        'Pendiente': '#ffc107',  # Amarillo
-        'Confirmada': '#28a745',  # Verde
-        'Cancelada': '#dc3545',   # Rojo
-        'Completada': '#17a2b8',  # Azul claro
+        'pendiente': '#ffc107',  # Amarillo
+        'confirmada': '#28a745',  # Verde
+        'completada': '#17a2b8',  # Azul claro
+        'cancelada': '#dc3545',   # Rojo
+        'no_asistio': '#6c757d',  # Gris
     }
     return colores.get(estado, '#6c757d')  # Gris por defecto
 
@@ -849,62 +915,70 @@ def guardar_cita(request):
         return JsonResponse({'error': 'Método no permitido'}, status=405)
     
     try:
+        import json
         from django.utils import timezone
-        from datetime import timedelta
-        from .models import CitasReservadas, HorarioCita, Paciente, UsuarioMedico
+        from datetime import datetime, timedelta
+        from .models import CitasReservadas, HorarioCita, Paciente, UsuarioMedico, EspecialidadMedica
         
         # Obtener datos del formulario
-        paciente_id = request.POST.get('paciente')
-        medico_id = request.POST.get('medico')
-        fecha_hora = request.POST.get('fecha_hora')
-        duracion = int(request.POST.get('duracion', 30))  # 30 minutos por defecto
-        notas = request.POST.get('notas', '')
-        costo = request.POST.get('costo', '0.00')
+        if request.content_type == 'application/json':
+            data = json.loads(request.body)
+        else:
+            data = request.POST
+            
+        paciente_id = data.get('paciente')
+        medico_id = data.get('medico')
+        especialidad_id = data.get('especialidad_id')
+        fecha = data.get('fecha')
+        hora = data.get('hora')
+        duracion = int(data.get('duracion', 30))  # 30 minutos por defecto
+        notas = data.get('notas', '')
+        costo = data.get('costo', '0.00')
         
         # Validaciones básicas
-        if not all([paciente_id, medico_id, fecha_hora]):
+        if not all([paciente_id, medico_id, fecha, hora]):
             return JsonResponse(
-                {'error': 'Faltan campos requeridos: paciente, médico o fecha/hora'}, 
+                {'error': 'Faltan campos requeridos: paciente, médico, fecha u hora'}, 
                 status=400
             )
         
         # Convertir la fecha/hora al formato correcto
         try:
-            fecha_hora_dt = datetime.strptime(fecha_hora, '%Y-%m-%dT%H:%M')
+            fecha_hora_str = f"{fecha}T{hora}"
+            fecha_hora_dt = datetime.strptime(fecha_hora_str, '%Y-%m-%dT%H:%M')
             fecha_hora_dt = timezone.make_aware(fecha_hora_dt)
             fecha_fin_dt = fecha_hora_dt + timedelta(minutes=duracion)
         except (ValueError, TypeError) as e:
             return JsonResponse(
-                {'error': f'Formato de fecha inválido: {str(e)}'}, 
+                {'error': f'Formato de fecha u hora inválido: {str(e)}'}, 
                 status=400
             )
         
-        # Obtener el paciente y el médico
+        # Obtener el paciente, médico y especialidad
         try:
             paciente = Paciente.objects.get(id_Paciente=paciente_id)
             medico = UsuarioMedico.objects.get(id_Medico=medico_id)
-        except (Paciente.DoesNotExist, UsuarioMedico.DoesNotExist) as e:
+            especialidad = EspecialidadMedica.objects.get(id_Especialidad_Medica=especialidad_id)
+        except (Paciente.DoesNotExist, UsuarioMedico.DoesNotExist, EspecialidadMedica.DoesNotExist) as e:
             return JsonResponse(
-                {'error': 'Paciente o médico no encontrado'}, 
+                {'error': 'Paciente, médico o especialidad no encontrado'}, 
                 status=404
             )
         
         # Buscar un horario existente o crear uno temporal
-        # En una implementación real, deberías tener un horario existente
-        # Aquí creamos uno temporal para el ejemplo
         horario = HorarioCita.objects.filter(
             medico=medico,
+            especialidad=especialidad,
             start_datetime__lte=fecha_hora_dt,
             end_datetime__gte=fecha_fin_dt,
             activo=True
         ).first()
         
         if not horario:
-            # Si no hay un horario existente, creamos uno temporal
-            # En producción, deberías manejar esto de manera diferente
+            # Crear un nuevo horario si no existe uno
             horario = HorarioCita(
                 medico=medico,
-                especialidad=medico.especialidades.first(),  # Tomar la primera especialidad del médico
+                especialidad=especialidad,
                 turno_id=1,  # Asignar un turno por defecto
                 start_datetime=fecha_hora_dt,
                 end_datetime=fecha_fin_dt,
@@ -932,11 +1006,14 @@ def guardar_cita(request):
         
     except Exception as e:
         import traceback
+        error_trace = traceback.format_exc()
+        print(f"Error al guardar cita: {str(e)}\n{error_trace}")
+        
         return JsonResponse(
             {
+                'success': False,
                 'error': 'Error al guardar la cita',
-                'details': str(e),
-                'trace': traceback.format_exc()
+                'details': str(e)
             }, 
             status=500
         )
@@ -1048,18 +1125,10 @@ def get_horarios_medico_especialidad(request, medico_id, especialidad_id):
         total_horarios = len(horarios_lista)
         logger.info(f'[HORARIOS] Total de horarios encontrados (con filtro de fecha): {total_horarios}')
         
-        if total_horarios == 0 and total_horarios_sin_filtro > 0:
-            logger.warning('[HORARIOS] ADVERTENCIA: Hay horarios en la base de datos pero ninguno cumple con el filtro de fecha')
-            # Obtener el horario más reciente para diagnóstico
-            ultimo_horario = HorarioCita.objects.filter(
-                medico=medico,
-                especialidad=especialidad,
-                activo=True
-            ).order_by('-start_datetime').first()
-            
-            if ultimo_horario:
-                logger.warning(f'[HORARIOS] Último horario encontrado (sin filtro): ID={ultimo_horario.id}, ' 
-                             f'Fecha: {ultimo_horario.start_datetime}, Activo: {ultimo_horario.activo}')
+        if total_horarios == 0:
+            logger.warning('[HORARIOS] No se encontraron horarios para procesar')
+            logger.warning(f'[HORARIOS] Parámetros de búsqueda - Médico ID: {medico_id}, Especialidad ID: {especialidad_id}')
+            logger.warning('[HORARIOS] Verificar que existan horarios activos para esta combinación')
         
         # Mostrar información detallada de los primeros 5 horarios para diagnóstico
         for i, h in enumerate(horarios_lista[:5], 1):
@@ -1308,3 +1377,437 @@ def horarios_json(request):
         import traceback
         traceback.print_exc()
         return JsonResponse({'error': str(e)}, status=500)
+
+def prueba_template(request):
+    from django.contrib.auth import get_user_model
+    from citas.models import EspecialidadMedica, UsuarioMedico, MedicoEspecialidad
+    from django.db.models import Prefetch
+    
+    # Obtener todas las especialidades
+    especialidades = EspecialidadMedica.objects.all().order_by('Espacialidad_Medica')
+    
+    # Obtener todos los médicos activos con sus especialidades
+    medicos = UsuarioMedico.objects.filter(activo=True).prefetch_related(
+        Prefetch('medicoespecialidad_set', 
+                queryset=MedicoEspecialidad.objects.filter(principal=True),
+                to_attr='especialidades_principales')
+    ).order_by('Nombres_Medico', 'Apellidos_Medicos')
+    
+    # Crear una lista de médicos con su especialidad principal
+    medicos_con_especialidad = []
+    for medico in medicos:
+        medico_data = {
+            'id_Medico': medico.id_Medico,
+            'Nombres_Medico': medico.Nombres_Medico,
+            'Apellidos_Medicos': medico.Apellidos_Medicos,
+            'especialidad_principal_id': medico.especialidades_principales[0].especialidad.id_Especialidad_Medica if hasattr(medico, 'especialidades_principales') and medico.especialidades_principales else None,
+            'especialidad_principal': medico.especialidades_principales[0].especialidad.Espacialidad_Medica if hasattr(medico, 'especialidades_principales') and medico.especialidades_principales else 'Sin especialidad'
+        }
+        medicos_con_especialidad.append(medico_data)
+    
+    return render(request, 'citas/reservas/calendario_nuevo.html', {
+        'title': 'Prueba de Calendario',
+        'hoy': '2025-10-24',
+        'medicos': medicos_con_especialidad,
+        'especialidades': especialidades,
+        'opts': {'app_label': 'citas'}
+    })
+
+@require_http_methods(["GET"])
+def obtener_disponibilidad_medico(request, medico_id, especialidad_id):
+    """Obtiene la disponibilidad de un médico para una especialidad específica"""
+    try:
+        # Obtener horarios activos del médico para la especialidad
+        horarios = HorarioCita.objects.filter(
+            medico_id=medico_id,
+            especialidad_id=especialidad_id,
+            activo=True
+        ).select_related('medico', 'especialidad', 'turno')
+        
+        disponibilidad = []
+        for horario in horarios:
+            disponibilidad.append({
+                'id': horario.id,
+                'title': f'Disponible - {horario.medico.Nombres_Medico}',
+                'start': horario.start_datetime.isoformat(),
+                'end': horario.end_datetime.isoformat(),
+                'color': '#28a745',  # Verde para disponibilidad
+                'textColor': 'white',
+                'display': 'background',
+                'classNames': 'disponibilidad-medico',
+                'extendedProps': {
+                    'tipo': 'disponibilidad',
+                    'medico_id': horario.medico_id,
+                    'especialidad_id': horario.especialidad_id,
+                    'domicilio': horario.domicilio,
+                    'turno': horario.turno.nombre if horario.turno else ''
+                }
+            })
+        
+        return JsonResponse({'disponibilidad': disponibilidad})
+        
+    except Exception as e:
+        return JsonResponse({'error': str(e)}, status=500)
+
+@require_http_methods(["GET"])
+def obtener_horas_disponibles(request, medico_id, especialidad_id, fecha):
+    """Obtiene horas disponibles específicas para agendar cita"""
+    try:
+        from datetime import datetime, date, time
+        import json
+        
+        # Convertir fecha string a objeto date
+        fecha_obj = datetime.strptime(fecha, '%Y-%m-%d').date()
+        
+        # Obtener horarios del médico para esa fecha
+        horarios = HorarioCita.objects.filter(
+            medico_id=medico_id,
+            especialidad_id=especialidad_id,
+            activo=True,
+            start_datetime__date=fecha_obj
+        )
+        
+        # Obtener citas ya agendadas para esa fecha - USAR CitasReservadas
+        citas_agendadas = CitasReservadas.objects.filter(
+            horario__medico_id=medico_id,
+            horario__especialidad_id=especialidad_id,
+            start_datetime__date=fecha_obj
+        ).values_list('start_datetime', flat=True)
+        
+        horas_disponibles = []
+        
+        for horario in horarios:
+            # Generar slots de tiempo disponibles
+            hora_actual = horario.start_datetime
+            while hora_actual < horario.end_datetime:
+                # Verificar si este slot no está ocupado
+                if hora_actual not in citas_agendadas:
+                    horas_disponibles.append({
+                        'hora': hora_actual.time().strftime('%H:%M:%S'),
+                        'hora_formateada': hora_actual.time().strftime('%I:%M %p'),
+                        'fecha_completa': hora_actual.isoformat()
+                    })
+                
+                # Avanzar 30 minutos (duración estándar de cita)
+                hora_actual = hora_actual + timedelta(minutes=30)
+        
+        return JsonResponse({'horas_disponibles': horas_disponibles})
+        
+    except Exception as e:
+        return JsonResponse({'error': str(e)}, status=500)
+
+@require_http_methods(["GET"])
+def obtener_horarios_recurrentes(request):
+    """Obtiene los horarios recurrentes procesados correctamente"""
+    try:
+        medico_id = request.GET.get('medico_id')
+        especialidad_id = request.GET.get('especialidad_id')
+        start = request.GET.get('start')
+        end = request.GET.get('end')
+        
+        print(f"🔄 obtener_horarios_recurrentes - médico: {medico_id}, especialidad: {especialidad_id}")
+        print(f"📅 Rango: {start} a {end}")
+        
+        eventos = []
+        
+        # Obtener horarios base
+        horarios = HorarioCita.objects.filter(activo=True)
+        
+        if medico_id:
+            horarios = horarios.filter(medico_id=medico_id)
+        if especialidad_id:
+            horarios = horarios.filter(especialidad_id=especialidad_id)
+        
+        print(f"🔍 Horarios encontrados: {horarios.count()}")
+        
+        for horario in horarios:
+            start_datetime = horario.start_datetime
+            end_datetime = horario.end_datetime
+            
+            print(f"📋 Procesando horario {horario.id}:")
+            print(f"   - Inicio: {start_datetime}")
+            print(f"   - Fin: {end_datetime}")
+            print(f"   - Regla: {horario.recurrence_rule}")
+
+            if horario.recurrence_rule and 'BYDAY=' in horario.recurrence_rule:
+                # Procesar días de la semana
+                dias_map = {'MO': 0, 'TU': 1, 'WE': 2, 'TH': 3, 'FR': 4, 'SA': 5, 'SU': 6}
+                dias_semana = []
+                
+                # Extraer días del BYDAY
+                byday_part = [p for p in horario.recurrence_rule.split(';') if 'BYDAY=' in p][0]
+                dias_rrule = byday_part.split('=')[1].split(',')
+                
+                for dia in dias_rrule:
+                    if dia in dias_map:
+                        dias_semana.append(dias_map[dia])
+                
+                print(f"   - Días de la semana: {dias_semana}")
+                
+                # Extraer fecha UNTIL si existe
+                until_date = None
+                if 'UNTIL=' in horario.recurrence_rule:
+                    try:
+                        until_part = [p for p in horario.recurrence_rule.split(';') if 'UNTIL=' in p][0]
+                        until_str = until_part.split('=')[1]
+                        until_date_utc = datetime.strptime(until_str, '%Y%m%dT%H%M%SZ')
+                        until_date = until_date_utc.date()
+                        print(f"   - Fecha UNTIL: {until_date}")
+                    except Exception as e:
+                        print(f"   - Error procesando UNTIL: {e}")
+
+                # Crear eventos recurrentes
+                fecha_base = start_datetime.date()
+                semana = 0
+                max_semanas = 8  # Reducido a 8 semanas para pruebas
+                
+                # Convertir fechas de filtro
+                start_date_filter = datetime.strptime(start, '%Y-%m-%dT%H:%M:%S%z').date() if start else None
+                end_date_filter = datetime.strptime(end, '%Y-%m-%dT%H:%M:%S%z').date() if end else None
+                
+                print(f"   - Filtro: {start_date_filter} a {end_date_filter}")
+                
+                eventos_creados = 0
+                
+                while semana < max_semanas and eventos_creados < 50:  # Límite por seguridad
+                    for dia_num in dias_semana:
+                        # Calcular fecha exacta
+                        dia_base_semana = fecha_base.weekday()
+                        dias_diferencia = dia_num - dia_base_semana
+                        if dias_diferencia < 0:
+                            dias_diferencia += 7
+                        
+                        evento_date = fecha_base + timedelta(weeks=semana, days=dias_diferencia)
+                        
+                        # Verificar si hemos pasado la fecha UNTIL
+                        if until_date and evento_date > until_date:
+                            continue
+                            
+                        # Verificar si está dentro del rango solicitado
+                        if start_date_filter and end_date_filter:
+                            if not (start_date_filter <= evento_date <= end_date_filter):
+                                continue
+                        
+                        # Crear evento
+                        evento_start = datetime.combine(evento_date, start_datetime.time())
+                        evento_end = datetime.combine(evento_date, end_datetime.time())
+                        
+                        # Hacer las fechas conscientes de la zona horaria
+                        if timezone.is_naive(evento_start):
+                            evento_start = timezone.make_aware(evento_start)
+                            evento_end = timezone.make_aware(evento_end)
+                        
+                        eventos.append({
+                            'id': f"disp_{horario.id}_{evento_date.strftime('%Y%m%d')}",
+                            'title': '⏰ Disponible',
+                            'start': evento_start.isoformat(),
+                            'end': evento_end.isoformat(),
+                            'color': '#e8f5e8',
+                            'textColor': '#2e7d32',
+                            'display': 'background',
+                            'extendedProps': {
+                                'tipo': 'disponibilidad',
+                                'medico_id': horario.medico_id,
+                                'especialidad_id': horario.especialidad_id,
+                                'horario_id': horario.id,
+                                'recurrente': True,
+                                'medico': f"{horario.medico.Nombres_Medico} {horario.medico.Apellidos_Medicos}",
+                                'especialidad': horario.especialidad.Espacialidad_Medica
+                            },
+                            'classNames': 'disponibilidad-medico'
+                        })
+                        
+                        eventos_creados += 1
+                        print(f"   ✅ Evento creado: {evento_date} {evento_start.time()}-{evento_end.time()}")
+                    
+                    semana += 1
+                    
+                    # Salir del loop si hemos pasado la fecha UNTIL
+                    if until_date and (fecha_base + timedelta(weeks=semana)) > until_date:
+                        break
+
+            else:
+                # Evento único - solo si está dentro del rango
+                if start and end:
+                    start_date_filter = datetime.strptime(start, '%Y-%m-%dT%H:%M:%S%z').date()
+                    end_date_filter = datetime.strptime(end, '%Y-%m-%dT%H:%M:%S%z').date()
+                    if not (start_date_filter <= start_datetime.date() <= end_date_filter):
+                        continue
+                
+                # Asegurar que las fechas sean conscientes de la zona horaria
+                if timezone.is_naive(start_datetime):
+                    start_datetime = timezone.make_aware(start_datetime)
+                    end_datetime = timezone.make_aware(end_datetime)
+                
+                eventos.append({
+                    'id': f"disp_{horario.id}",
+                    'title': '⏰ Disponible',
+                    'start': start_datetime.isoformat(),
+                    'end': end_datetime.isoformat(),
+                    'color': '#e8f5e8',
+                    'textColor': '#2e7d32',
+                    'display': 'background',
+                    'extendedProps': {
+                        'tipo': 'disponibilidad',
+                        'medico_id': horario.medico_id,
+                        'especialidad_id': horario.especialidad_id,
+                        'horario_id': horario.id,
+                        'recurrente': False,
+                        'medico': f"{horario.medico.Nombres_Medico} {horario.medico.Apellidos_Medicos}",
+                        'especialidad': horario.especialidad.Espacialidad_Medica
+                    },
+                    'classNames': 'disponibilidad-medico'
+                })
+                print(f"   ✅ Evento único creado: {start_datetime}")
+
+        print(f"🎯 Total eventos de disponibilidad creados: {len(eventos)}")
+        return JsonResponse(eventos, safe=False)
+        
+    except Exception as e:
+        print(f"❌ ERROR en obtener_horarios_recurrentes: {str(e)}")
+        import traceback
+        traceback.print_exc()
+        return JsonResponse({'error': str(e)}, status=500)
+        
+@require_http_methods(["GET"])
+def obtener_citas_y_disponibilidad(request):
+    """Obtiene tanto las citas agendadas como la disponibilidad recurrente"""
+    try:
+        from dateutil import rrule
+        from django.utils import timezone
+        
+        medico_id = request.GET.get('medico_id')
+        especialidad_id = request.GET.get('especialidad_id')
+        start = request.GET.get('start')
+        end = request.GET.get('end')
+        
+        eventos = []
+        
+        # 1. Obtener horarios de disponibilidad
+        if medico_id and especialidad_id:
+            # Obtener horarios regulares del médico
+            horarios = HorarioCita.objects.filter(
+                medico_id=medico_id,
+                especialidad_id=especialidad_id,
+                activo=True
+            ).select_related('medico', 'especialidad')
+            
+            # Convertir fechas de string a datetime
+            start_dt = timezone.datetime.strptime(start, '%Y-%m-%dT%H:%M:%S%z')
+            end_dt = timezone.datetime.strptime(end, '%Y-%m-%dT%H:%M:%S%z')
+            
+            for horario in horarios:
+                # Si es un horario recurrente
+                if horario.recurrence_rule:
+                    try:
+                        rules = rrule.rrulestr(horario.recurrence_rule, dtstart=horario.start_datetime)
+                        ocurrencias = list(rules.between(start_dt, end_dt, inc=True))
+                        
+                        for ocurrencia in ocurrencias:
+                            inicio = ocurrencia
+                            fin = ocurrencia + (horario.end_datetime - horario.start_datetime)
+                            
+                            if timezone.is_naive(inicio):
+                                inicio = timezone.make_aware(inicio)
+                                fin = timezone.make_aware(fin)
+                            
+                            eventos.append({
+                                'id': f"disp_{horario.id}_{inicio.strftime('%Y%m%d%H%M')}",
+                                'title': 'Disponible',
+                                'start': inicio.isoformat(),
+                                'end': fin.isoformat(),
+                                'color': '#e8f5e9',
+                                'textColor': '#1b5e20',
+                                'display': 'background',
+                                'extendedProps': {
+                                    'tipo': 'disponibilidad',
+                                    'medico_id': horario.medico_id,
+                                    'especialidad_id': horario.especialidad_id,
+                                    'horario_id': horario.id,
+                                    'recurrente': True
+                                },
+                                'classNames': 'disponibilidad-medico'
+                            })
+                            
+                    except Exception as e:
+                        print(f"Error al procesar horario recurrente: {str(e)}")
+                        continue
+                else:
+                    # Para horarios no recurrentes
+                    inicio = horario.start_datetime
+                    fin = horario.end_datetime
+                    
+                    if (inicio <= end_dt and fin >= start_dt):
+                        eventos.append({
+                            'id': f"disp_{horario.id}",
+                            'title': 'Disponible',
+                            'start': inicio.isoformat(),
+                            'end': fin.isoformat(),
+                            'color': '#e8f5e9',
+                            'textColor': '#1b5e20',
+                            'display': 'background',
+                            'extendedProps': {
+                                'tipo': 'disponibilidad',
+                                'medico_id': horario.medico_id,
+                                'especialidad_id': horario.especialidad_id,
+                                'horario_id': horario.id,
+                                'recurrente': False
+                            },
+                            'classNames': 'disponibilidad-medico'
+                        })
+        
+        # 2. Obtener citas agendadas
+        citas = CitasReservadas.objects.filter(
+            start_datetime__range=(start, end)
+        ).select_related('paciente', 'horario__medico', 'horario__especialidad')
+        
+        if medico_id:
+            citas = citas.filter(horario__medico_id=medico_id)
+        if especialidad_id:
+            citas = citas.filter(horario__especialidad_id=especialidad_id)
+            
+        for cita in citas:
+            eventos.append({
+                'id': f"cita_{cita.id}",
+                'title': f'Cita - {cita.paciente.Nombres_Paciente}',
+                'start': cita.start_datetime.isoformat(),
+                'end': cita.end_datetime.isoformat(),
+                'color': get_color_estado(cita.estado),
+                'textColor': 'white',
+                'extendedProps': {
+                    'tipo': 'cita',
+                    'estado': cita.estado,
+                    'medico': f"{cita.horario.medico.Nombres_Medico} {cita.horario.medico.Apellidos_Medicos}",
+                    'especialidad': cita.horario.especialidad.Espacialidad_Medica if cita.horario.especialidad else '',
+                    'paciente': f"{cita.paciente.Nombres_Paciente} {cita.paciente.Apellidos_Paciente}",
+                    'notas': cita.nota,
+                    'cita_id': cita.id
+                },
+                'classNames': get_clase_estado(cita.estado)
+            })
+        
+        # No necesitamos la llamada adicional a obtener_horarios_recurrentes
+        # ya que ya hemos procesado los horarios recurrentes al inicio
+        
+        print(f"DEBUG - Total eventos a devolver: {len(eventos)}")
+        return JsonResponse(eventos, safe=False)
+        
+    except Exception as e:
+        print(f"ERROR en obtener_citas_y_disponibilidad: {str(e)}")
+        return JsonResponse({'error': str(e)}, status=500)
+
+# Funciones auxiliares para colores y clases
+def get_color_estado(estado):
+    """Devuelve el color según el estado de la cita"""
+    colores = {
+        'pendiente': '#ffc107',      # Amarillo
+        'confirmada': '#28a745',     # Verde
+        'completada': '#17a2b8',     # Azul
+        'cancelada': '#dc3545',      # Rojo
+        'no_asistio': '#6c757d',     # Gris
+    }
+    return colores.get(estado.lower(), '#6c757d')  # Gris por defecto
+
+def get_clase_estado(estado):
+    """Devuelve la clase CSS según el estado"""
+    return estado.lower().replace(' ', '-')
