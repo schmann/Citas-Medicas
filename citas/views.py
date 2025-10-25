@@ -5,7 +5,7 @@ from .forms import RegistroPacienteForm
 from .models import (
     Ciudad, Municipio, Parroquia, Estado, Pais,
     EspecialidadMedica, HorarioCita, MedicoEspecialidad,
-    CitasReservadas, Paciente, UsuarioMedico
+    Cita, CitasReservadas, Paciente, UsuarioMedico
 )
 from .forms import EspecialidadMedicaForm
 from django.contrib import messages
@@ -947,6 +947,118 @@ def agenda_medico(request):
     # Renderiza la plantilla del calendario.
     return render(request, 'citas/agenda/agenda_medico.html')
 
+def editar_cita(request, cita_id):
+    """
+    Vista para editar una cita existente en la tabla citas_reservadas
+    """
+    if request.method != 'POST':
+        return JsonResponse({'error': 'Método no permitido'}, status=405)
+    
+    try:
+        from django.utils import timezone
+        from datetime import datetime, timedelta
+        from .models import CitasReservadas, HorarioCita, Paciente, UsuarioMedico, EspecialidadMedica
+        
+        # Obtener la cita existente
+        try:
+            cita = CitasReservadas.objects.get(id=cita_id)
+        except CitasReservadas.DoesNotExist:
+            return JsonResponse({'error': 'Cita no encontrada'}, status=404)
+        
+        # Obtener datos del formulario
+        if request.content_type == 'application/json':
+            data = json.loads(request.body)
+        else:
+            data = request.POST
+            
+        # Actualizar campos de la cita
+        if 'fecha' in data and 'hora' in data:
+            try:
+                fecha_hora_str = f"{data['fecha']}T{data['hora']}"
+                fecha_hora_dt = datetime.strptime(fecha_hora_str, '%Y-%m-%dT%H:%M')
+                fecha_hora_dt = timezone.make_aware(fecha_hora_dt)
+                duracion = int(data.get('duracion', 30))  # 30 minutos por defecto
+                fecha_fin_dt = fecha_hora_dt + timedelta(minutes=duracion)
+                
+                cita.start_datetime = fecha_hora_dt
+                cita.end_datetime = fecha_fin_dt
+            except (ValueError, TypeError) as e:
+                return JsonResponse(
+                    {'error': f'Formato de fecha u hora inválido: {str(e)}'}, 
+                    status=400
+                )
+        
+        # Actualizar otros campos si se proporcionan
+        if 'paciente' in data:
+            try:
+                cita.paciente = Paciente.objects.get(id_Paciente=data['paciente'])
+            except Paciente.DoesNotExist:
+                return JsonResponse({'error': 'Paciente no encontrado'}, status=404)
+                
+        if 'medico' in data or 'especialidad_id' in data:
+            try:
+                medico_id = data.get('medico', cita.horario.medico.id_Medico)
+                especialidad_id = data.get('especialidad_id', cita.horario.especialidad.id_Especialidad_Medica)
+                
+                # Buscar un horario existente o crear uno nuevo
+                horario = HorarioCita.objects.filter(
+                    medico_id=medico_id,
+                    especialidad_id=especialidad_id,
+                    start_datetime__lte=cita.start_datetime,
+                    end_datetime__gte=cita.end_datetime,
+                    activo=True
+                ).first()
+                
+                if not horario:
+                    # Crear un nuevo horario si no existe uno
+                    horario = HorarioCita(
+                        medico_id=medico_id,
+                        especialidad_id=especialidad_id,
+                        turno_id=1,  # Asignar un turno por defecto
+                        start_datetime=cita.start_datetime,
+                        end_datetime=cita.end_datetime,
+                        activo=True
+                    )
+                    horario.save()
+                
+                cita.horario = horario
+                
+            except (UsuarioMedico.DoesNotExist, EspecialidadMedica.DoesNotExist) as e:
+                return JsonResponse(
+                    {'error': 'Médico o especialidad no encontrado'}, 
+                    status=404
+                )
+        
+        # Actualizar campos adicionales
+        if 'notas' in data:
+            cita.nota = data['notas']
+            
+        if 'costo' in data:
+            cita.costo = data['costo']
+        
+        # Guardar los cambios
+        cita.save()
+        
+        return JsonResponse({
+            'success': True,
+            'message': 'Cita actualizada exitosamente',
+            'cita_id': cita.id
+        })
+        
+    except Exception as e:
+        import traceback
+        error_trace = traceback.format_exc()
+        print(f"Error al actualizar cita: {str(e)}\n{error_trace}")
+        
+        return JsonResponse(
+            {
+                'success': False,
+                'error': 'Error al actualizar la cita',
+                'details': str(e)
+            }, 
+            status=500
+        )
+
 def guardar_cita(request):
     """
     Vista para guardar una nueva cita en la tabla citas_reservadas
@@ -1843,5 +1955,109 @@ def get_color_estado(estado):
     return colores.get(estado.lower(), '#6c757d')  # Gris por defecto
 
 def get_clase_estado(estado):
-    """Devuelve la clase CSS según el estado"""
-    return estado.lower().replace(' ', '-')
+    # Devuelve la clase CSS según el estado
+    return f'estado-{estado.lower()}'
+
+@csrf_exempt
+def actualizar_estado_cita(request):
+    """
+    Vista para actualizar el estado de una cita.
+    """
+    print("\n=== SOLICITUD RECIBIDA EN actualizar_estado_cita ===")
+    print(f"Método: {request.method}")
+    print(f"Datos POST: {request.POST}")
+    
+    if request.method != 'POST':
+        error_msg = 'Método no permitido. Se esperaba POST.'
+        print(f"❌ {error_msg}")
+        return JsonResponse({'estado': 'error', 'mensaje': error_msg}, status=405)
+    
+    try:
+        # Obtener los datos de la solicitud
+        cita_id = request.POST.get('id')
+        nuevo_estado = request.POST.get('estado', '').upper()
+        
+        print(f"📝 Datos recibidos - ID: {cita_id}, Nuevo estado: {nuevo_estado}")
+        
+        if not cita_id:
+            error_msg = 'El ID de la cita es requerido'
+            print(f"❌ {error_msg}")
+            return JsonResponse({'estado': 'error', 'mensaje': error_msg}, status=400)
+            
+        if not nuevo_estado:
+            error_msg = 'El nuevo estado es requerido'
+            print(f"❌ {error_msg}")
+            return JsonResponse({'estado': 'error', 'mensaje': error_msg}, status=400)
+        
+        # Validar que el estado sea uno de los permitidos
+        estados_permitidos = {
+            'PENDIENTE': 'pendiente',
+            'CONFIRMADA': 'confirmada',
+            'CANCELADA': 'cancelada',
+            'COMPLETADA': 'completada',
+            'REPROGRAMADA': 'reprogramada'
+        }
+        
+        # Convertir el estado a minúsculas para la comparación
+        estado_lower = nuevo_estado.lower()
+        if estado_lower not in estados_permitidos.values():
+            estados_str = ", ".join([k for k in estados_permitidos.keys()])
+            error_msg = f'Estado no válido. Debe ser uno de: {estados_str}'
+            print(f"❌ {error_msg}")
+            return JsonResponse({'estado': 'error', 'mensaje': error_msg}, status=400)
+        
+        # Obtener la cita
+        try:
+            # Manejar el formato 'cita_X' si es necesario
+            if isinstance(cita_id, str) and cita_id.startswith('cita_'):
+                cita_id = cita_id.replace('cita_', '')
+                print(f"🔍 Formato de ID detectado, nuevo ID: {cita_id}")
+            
+            print(f"🔍 Buscando cita con ID: {cita_id}")
+            cita_id = int(cita_id)  # Asegurarse de que sea un entero
+            cita = CitasReservadas.objects.get(id=cita_id)
+            print(f"✅ Cita encontrada: {cita}")
+        except CitasReservadas.DoesNotExist:
+            error_msg = f'No se encontró la cita con ID: {cita_id}'
+            print(f"❌ {error_msg}")
+            return JsonResponse({'estado': 'error', 'mensaje': error_msg}, status=404)
+        except Exception as e:
+            error_msg = f'Error al buscar la cita: {str(e)}'
+            print(f"❌ {error_msg}")
+            return JsonResponse({'estado': 'error', 'mensaje': error_msg}, status=500)
+        
+        # Actualizar el estado de la cita
+        try:
+            print(f"🔄 Actualizando estado de la cita {cita_id} a {estado_lower}")
+            cita.estado = estado_lower
+            cita.save()
+            print("✅ Estado actualizado correctamente")
+        except Exception as e:
+            error_msg = f'Error al actualizar el estado: {str(e)}'
+            print(f"❌ {error_msg}")
+            return JsonResponse({'estado': 'error', 'mensaje': error_msg}, status=500)
+        
+        # Registrar el cambio de estado
+        print(f"✅ Estado de la cita {cita_id} actualizado a {nuevo_estado}")
+        
+        return JsonResponse({
+            'estado': 'success',
+            'mensaje': f'Estado de la cita actualizado a {nuevo_estado}',
+            'nuevo_estado': nuevo_estado,
+            'clase_estado': get_clase_estado(nuevo_estado)
+        })
+        
+    except Exception as e:
+        import traceback
+        error_trace = traceback.format_exc()
+        print(f"\n❌ ERROR NO MANEJADO EN actualizar_estado_cita")
+        print(f"Tipo de error: {type(e).__name__}")
+        print(f"Mensaje: {str(e)}")
+        print(f"Traceback completo:\n{error_trace}")
+        
+        return JsonResponse({
+            'estado': 'error',
+            'mensaje': f'Error interno del servidor: {str(e)}',
+            'tipo_error': type(e).__name__,
+            'traceback': error_trace
+        }, status=500)

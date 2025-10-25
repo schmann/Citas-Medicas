@@ -48,6 +48,7 @@ urlpatterns = [
     path('consultorios/toggle-status/<int:pk>/', login_required(toggle_consultorio_status), name='consultorio_toggle_status'),
 
     # URLs para la API de Citas
+    path('api/actualizar-estado-cita/', csrf_exempt(views.actualizar_estado_cita), name='actualizar_estado_cita'),
     path('api/pacientes/', csrf_exempt(views.obtener_pacientes), name='obtener_pacientes'),
     
     # Vista del Calendario
@@ -89,4 +90,10 @@ urlpatterns = [
     
     # NUEVA RUTA API PARA GUARDAR CITAS (con validación estricta)
     path('api/guardar-cita/', csrf_exempt(views.guardar_cita), name='guardar_cita'),
+    
+    # Ruta para editar una cita existente
+    path('api/editar-cita/<int:cita_id>/', csrf_exempt(views.editar_cita), name='editar_cita'),
+    
+    # Ruta para actualizar el estado de una cita
+    path('api/actualizar-estado-cita/', csrf_exempt(views.actualizar_estado_cita), name='actualizar_estado_cita'),
 ]
