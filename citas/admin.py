@@ -36,6 +36,7 @@ class CustomAdminSite(admin.AdminSite):
     index_title = 'Administración'
     
     def get_urls(self):
+        from django.urls import path
         urls = super().get_urls()
         custom_urls = [
             path('get_ciudades/', self.admin_view(self.get_ciudades), name='get_ciudades'),
@@ -44,6 +45,30 @@ class CustomAdminSite(admin.AdminSite):
             path('get_especialidades_medico/', self.admin_view(self.get_especialidades_medico), name='get_especialidades_medico'),
         ]
         return custom_urls + urls
+        
+    def calendario_view(self, request):
+        # Verificar permisos
+        if not request.user.is_staff:
+            from django.contrib.auth.views import redirect_to_login
+            return redirect_to_login(request.get_full_path())
+            
+        # Verificar permiso específico
+        if not request.user.has_perm('citas.view_citasreservadas'):
+            from django.core.exceptions import PermissionDenied
+            raise PermissionDenied
+            
+        context = dict(
+            self.each_context(request),
+            title='Calendario de Citas',
+            app_label='citas',
+            is_popup=False,
+            has_view_permission=True,
+            has_add_permission=request.user.has_perm('citas.add_citasreservadas'),
+            has_change_permission=request.user.has_perm('citas.change_citasreservadas'),
+            has_delete_permission=request.user.has_perm('citas.delete_citasreservadas'),
+        )
+        from django.shortcuts import render
+        return render(request, 'citas/reservas/calendario_nuevo.html', context)
         
     def get_app_list(self, request):
         app_list = super().get_app_list(request)
@@ -54,12 +79,14 @@ class CustomAdminSite(admin.AdminSite):
             app_list.append({
                 'name': 'Calendario',
                 'app_label': 'citas_calendario',
-                'models': [{
-                    'name': 'Calendario de Citas',
-                    'object_name': 'calendario',
-                    'admin_url': '/admin/citas/citasreservadas/calendario/',
-                    'view_only': True,
-                }]
+                'models': [
+                    {
+                        'name': 'Reservar Cita',
+                        'object_name': 'reservar_cita',
+                        'admin_url': '/citas/calendario-nuevo/',
+                        'view_only': True,
+                    }
+                ]
             })
         
         return app_list
@@ -89,11 +116,32 @@ class CustomAdminSite(admin.AdminSite):
     def get_especialidades_medico(self, request):
         medico_id = request.GET.get('medico_id')
         if medico_id:
-            especialidades = MedicoEspecialidad.objects.filter(
-                medico_id=medico_id, 
-                activo=True
-            ).select_related('especialidad').values('id', 'especialidad__Espacialidad_Medica')
-            return JsonResponse(list(especialidades), safe=False)
+            try:
+                # Obtener el médico con sus especialidades
+                from django.db.models import Prefetch
+                from .models import MedicoEspecialidad, EspecialidadMedica
+                
+                # Obtener todas las especialidades del médico, incluyendo las inactivas
+                especialidades = MedicoEspecialidad.objects.filter(
+                    medico_id=medico_id
+                ).select_related('especialidad').order_by('especialidad__Espacialidad_Medica')
+                
+                # Preparar los datos para la respuesta
+                especialidades_data = []
+                for especialidad in especialidades:
+                    especialidades_data.append({
+                        'id': especialidad.id,
+                        'especialidad__id_Especialidad_Medica': especialidad.especialidad.id_Especialidad_Medica,
+                        'especialidad__Espacialidad_Medica': especialidad.especialidad.Espacialidad_Medica,
+                        'activo': especialidad.activo
+                    })
+                
+                print(f"[DEBUG] Especialidades encontradas para médico {medico_id}: {len(especialidades_data)}")
+                return JsonResponse(especialidades_data, safe=False)
+                
+            except Exception as e:
+                print(f"[ERROR] Error al obtener especialidades: {str(e)}")
+                return JsonResponse([], safe=False)
         return JsonResponse([], safe=False)
 
 # Crear la instancia personalizada de AdminSite
@@ -696,8 +744,7 @@ admin_site.register(Consultorio, ConsultorioAdmin)
 admin_site.register(Banco, BancoAdmin)
 
 # Importar y registrar el CalendarioAdmin después de definir todos los modelos
-from .admin_calendario import CalendarioAdmin
-admin_site.register(CitasReservadas, CalendarioAdmin)
+#from .admin_calendario import CalendarioAdmin
 admin_site.register(Pais, PaisAdmin)
 admin_site.register(Estado, EstadoAdmin)
 admin_site.register(Ciudad, CiudadAdmin)
@@ -706,4 +753,4 @@ admin_site.register(Parroquia, ParroquiaAdmin)
 
 # Verificar si el modelo ya está registrado antes de registrarlo
 if not admin_site.is_registered(HorarioCita):
-    admin_site.register(HorarioCita, HorarioCitaAdmin)
+   admin_site.register(HorarioCita, HorarioCitaAdmin)

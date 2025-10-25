@@ -1,0 +1,27 @@
+{% extends "admin/base_site.html" %}
+{% load i18n %}
+
+{% block title %}{{ title }} | {{ site_title|default:_('Django site admin') }}{% endblock %}
+
+{% block branding %}
+<h1 id="site-name">
+    <a href="{% url 'admin:index' %}">
+        {{ site_header|default:_('Administración') }}
+    </a>
+</h1>
+{% endblock %}
+
+{% block userlinks %}
+    {% if site_url %}
+        <a href="{{ site_url }}">{% translate 'Ver sitio' %}</a> /
+    {% endif %}
+    {% if user.is_active and user.is_staff %}
+        <a href="{% url 'citas:calendario_nuevo' %}" class="text-success">
+            <i class="fas fa-calendar-plus"></i> Calendario Mejorado
+        </a> /
+    {% endif %}
+    {% if user.has_usable_password %}
+    <a href="{% url 'admin:password_change' %}">{% translate 'Cambiar contraseña' %}</a> /
+    {% endif %}
+    <a href="{% url 'admin:logout' %}">{% translate 'Cerrar sesión' %}</a>
+{% endblock %}

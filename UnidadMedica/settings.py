@@ -247,32 +247,6 @@ JAZZMIN_SETTINGS = {
     },
     
     # -----------------------------------------------------------------
-    # 2. AGENDA Y CITAS (Operacional)
-    # -----------------------------------------------------------------
-    {
-        "name": "Agenda y Citas",
-        "icon": "fas fa-calendar-check",
-        "app": "citas",
-        "permissions": ["citas.view_cita"],
-        "models": [
-            {
-                "name": "Calendario",
-                "url": "/citas/calendario/",
-                "icon": "fas fa-calendar-day"
-            },
-            {
-                "name": "Gestión de Citas",
-                "icon": "fas fa-calendar-plus",
-                "models": [
-                    {"name": "Lista de Citas", "model": "citas.cita", "icon": "fas fa-list"},
-                    {"name": "Tipos de Cita", "model": "citas.tipocita", "icon": "fas fa-tags"},
-                    {"name": "Estados de Cita", "model": "citas.estadocita", "icon": "fas fa-tag"}
-                ]
-            }
-        ]
-    },
-    
-    # -----------------------------------------------------------------
     # 3. GESTIÓN MÉDICA Y PERSONAL (Usuarios y Expedientes)
     # -----------------------------------------------------------------
     {

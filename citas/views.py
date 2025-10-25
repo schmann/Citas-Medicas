@@ -1,17 +1,3 @@
-# citas/views.py
-import logging
-import traceback
-
-from django.shortcuts import render, redirect, get_object_or_404
-from django.http import JsonResponse, HttpResponseBadRequest, HttpResponse
-from django.views.decorators.http import require_http_methods
-from django.views.decorators.csrf import csrf_exempt
-from django.db.models import Q
-from django.contrib.auth.decorators import login_required
-from rest_framework.decorators import api_view, permission_classes
-from rest_framework.permissions import AllowAny
-from rest_framework.response import Response
-from django.contrib.auth import get_user_model
 from datetime import datetime, timedelta
 import json
 
@@ -42,7 +28,12 @@ from django.views.decorators.csrf import csrf_exempt
 from django.http import JsonResponse
 from django.db import transaction
 from django.core import serializers
-
+from django.views.decorators.http import require_http_methods
+from rest_framework.decorators import api_view
+from rest_framework.response import Response
+from rest_framework.decorators import permission_classes
+from rest_framework.permissions import AllowAny
+from django.shortcuts import render, redirect
 # -------------------------------------------------------------
 # VISTAS PRINCIPALES
 # -------------------------------------------------------------
@@ -58,13 +49,44 @@ def calendario_nuevo_view(request):
     # Obtener la fecha actual
     hoy = timezone.now().date()
     
-    # Obtener solo los pacientes (sin filtros adicionales)
     try:
-        print("\n=== CARGANDO PACIENTES ===")
+        print("\n=== CARGANDO DATOS PARA EL CALENDARIO ===")
         
         # Obtener todos los pacientes
         pacientes = Paciente.objects.all()
         print(f"Total de pacientes en la base de datos: {pacientes.count()}")
+        
+        # Obtener todos los médicos activos con sus especialidades
+        medicos = UsuarioMedico.objects.filter(activo=True).prefetch_related('medicoespecialidad_set__especialidad')
+        
+        # Preparar la lista de médicos con sus especialidades
+        medicos_con_especialidad = []
+        for medico in medicos:
+            # Obtener todas las especialidades del médico
+            especialidades = []
+            for me in medico.medicoespecialidad_set.all():
+                especialidades.append({
+                    'id': me.especialidad.id_Especialidad_Medica,
+                    'nombre': me.especialidad.Espacialidad_Medica,
+                    'activo': me.activo
+                })
+            
+            # Agregar el médico a la lista con sus especialidades
+            if especialidades:  # Solo incluir médicos con al menos una especialidad
+                medicos_con_especialidad.append({
+                    'id_Medico': medico.id_Medico,
+                    'Nombres_Medico': medico.Nombres_Medico,
+                    'Apellidos_Medicos': medico.Apellidos_Medicos,
+                    'especialidades': especialidades
+                })
+        
+        print(f"Total de médicos activos con especialidades: {len(medicos_con_especialidad)}")
+        for m in medicos_con_especialidad[:5]:  # Mostrar primeros 5 para depuración
+            print(f"  - {m['Nombres_Medico']} {m['Apellidos_Medicos']}: {len(m['especialidades'])} especialidades")
+        
+        # Obtener todas las especialidades
+        especialidades = EspecialidadMedica.objects.all()
+        print(f"Total de especialidades: {especialidades.count()}")
         
         # Mostrar información de los primeros 5 pacientes
         print("\nEjemplos de pacientes (primeros 5):")
@@ -74,16 +96,20 @@ def calendario_nuevo_view(request):
                   f"Cédula: {getattr(p, 'CIDNI', 'N/A')}")
         
     except Exception as e:
-        print(f"\n¡ERROR al cargar pacientes: {str(e)}")
+        print(f"\n¡ERROR al cargar datos: {str(e)}")
         import traceback
         traceback.print_exc()
         pacientes = Paciente.objects.none()
+        medicos_con_especialidad = []
+        especialidades = EspecialidadMedica.objects.none()
     
-    # Crear contexto con solo los datos necesarios
+    # Crear contexto con los datos necesarios
     context = {
         'title': 'Nuevo Calendario de Citas',
         'hoy': hoy,
-        'pacientes': pacientes,  # Lista de objetos Paciente
+        'pacientes': pacientes,
+        'medicos': medicos_con_especialidad,  # Contiene la lista de todos los médicos activos
+        'especialidades': especialidades,
         'opts': {'app_label': 'citas'},
     }
     
@@ -349,20 +375,29 @@ class MedicoEspecialidadDeleteView(DeleteView):
 
 def get_especialidades_medico(request, medico_id):
     try:
-        # Obtener las especialidades del médico
+        # Obtener todas las especialidades del médico, incluyendo las inactivas
         especialidades = MedicoEspecialidad.objects.filter(
-            medico_id=medico_id, 
-            activo=True
-        ).select_related('especialidad').values(
+            medico_id=medico_id
+        ).select_related('especialidad').order_by('especialidad__Espacialidad_Medica').values(
             'especialidad__id_Especialidad_Medica', 
-            'especialidad__Espacialidad_Medica'
-        )
+            'especialidad__Espacialidad_Medica',
+            'activo',
+            'especialidad_id'
+        ).distinct('especialidad_id')  # Asegurar que no haya duplicados por especialidad
+        
+        if not especialidades.exists():
+            return JsonResponse({
+                'especialidades': [],
+                'mensajes_horario': {},
+                'advertencia': 'El médico no tiene especialidades asignadas'
+            })
         
         # Renombrar las claves para que sean más amigables
         especialidades_list = [
             {
                 'id': e['especialidad__id_Especialidad_Medica'],
-                'nombre': e['especialidad__Espacialidad_Medica']
+                'nombre': e['especialidad__Espacialidad_Medica'],
+                'activo': e['activo']
             }
             for e in especialidades
         ]
@@ -370,40 +405,45 @@ def get_especialidades_medico(request, medico_id):
         # Obtener el horario del médico para cada especialidad
         horarios_especialidades = []
         for esp in especialidades_list:
-            # Llamar a la función que ya tenemos para obtener los horarios
-            from django.urls import reverse
-            from django.test import RequestFactory
-            from rest_framework.test import force_authenticate
-            
-            # Crear una solicitud simulada
-            factory = RequestFactory()
-            url = reverse('citas:get_horarios_medico_especialidad', 
-                         args=[medico_id, esp['id']])
-            req = factory.get(url)
-            
-            # Llamar a la vista de horarios
-            from .views import get_horarios_medico_especialidad
-            response = get_horarios_medico_especialidad(req, medico_id, esp['id'])
-            
-            # Si la respuesta es exitosa, obtener el mensaje de horario
-            mensaje_horario = ''
-            if hasattr(response, 'data') and 'mensaje_horario' in response.data:
-                mensaje_horario = response.data['mensaje_horario']
-            
-            # Agregar el mensaje de horario a la especialidad
-            esp['mensaje_horario'] = mensaje_horario
-            horarios_especialidades.append(esp)
+            try:
+                from django.urls import reverse
+                from django.test import RequestFactory
+                
+                # Crear una solicitud simulada
+                factory = RequestFactory()
+                url = reverse('citas:get_horarios_medico_especialidad', 
+                            args=[medico_id, esp['id']])
+                req = factory.get(url)
+                
+                # Llamar a la vista de horarios
+                from .views import get_horarios_medico_especialidad
+                response = get_horarios_medico_especialidad(req, medico_id, esp['id'])
+                
+                # Si la respuesta es exitosa, obtener el mensaje de horario
+                mensaje_horario = response.data.get('mensaje_horario', '') if hasattr(response, 'data') else ''
+                
+                # Agregar el mensaje de horario a la especialidad
+                esp['mensaje_horario'] = mensaje_horario
+                horarios_especialidades.append(esp)
+                
+            except Exception as e:
+                import traceback
+                traceback.print_exc()
+                continue  # Continuar con la siguiente especialidad si hay un error
         
         # Retornar la lista de especialidades con sus horarios
         return JsonResponse({
             'especialidades': especialidades_list,
             'mensajes_horario': {e['id']: e.get('mensaje_horario', '') for e in horarios_especialidades}
         })
+        
     except Exception as e:
         import traceback
         traceback.print_exc()
-        return JsonResponse({'error': str(e)}, status=500)
-
+        return JsonResponse({
+            'error': 'Error al obtener las especialidades del médico',
+            'detalle': str(e)
+        }, status=500)
 class BancoListView(ListView):
     model = Banco
     template_name = 'citas/banco_list.html'
@@ -499,54 +539,6 @@ def obtener_medicos(request):
 # -------------------------------------------------------------
 # VISTAS DE AGENDA Y CALENDARIO
 # -------------------------------------------------------------
-
-def calendario_view(request):
-    from .models import Paciente, UsuarioMedico, EspecialidadMedica, CitasReservadas
-    import json
-    from datetime import timedelta
-    
-    # Obtener datos básicos para el formulario
-    pacientes = Paciente.objects.filter(Activo=True).order_by('Apellidos_Paciente', 'Nombres_Paciente')
-    medicos = UsuarioMedico.objects.filter(activo=True).order_by('Apellidos_Medicos', 'Nombres_Medico')
-    especialidades = EspecialidadMedica.objects.all().order_by('Espacialidad_Medica')
-    
-    # Obtener citas para el calendario - USAR CitasReservadas
-    citas = CitasReservadas.objects.select_related('paciente', 'horario__medico', 'horario__especialidad').all()
-    
-    # Preparar los eventos para el calendario
-    eventos = []
-    for cita in citas:
-        eventos.append({
-            'id': cita.id,
-            'title': f"{cita.paciente.Nombres_Paciente} {cita.paciente.Apellidos_Paciente}",
-            'start': cita.start_datetime.isoformat(),
-            'end': cita.end_datetime.isoformat(),
-            'estado': cita.estado,
-            'paciente': f"{cita.paciente.Nombres_Paciente} {cita.paciente.Apellidos_Paciente}",
-            'medico': f"{cita.horario.medico.Nombres_Medico} {cita.horario.medico.Apellidos_Medicos}",
-            'especialidad': cita.horario.especialidad.Espacialidad_Medica if cita.horario.especialidad else '',
-            'notas': cita.nota or '',
-            'color': get_color_estado(cita.estado)
-        })
-    
-    # Convertir a JSON seguro para JavaScript
-    eventos_json = json.dumps(eventos, ensure_ascii=False)
-    
-    context = {
-        'pacientes': pacientes,
-        'medicos': medicos,
-        'especialidades': especialidades,
-        'eventos_json': eventos_json,
-        'opts': {'app_label': 'citas'},
-        'is_popup': False,
-        'has_permission': True,
-        'site_url': '/',
-        'site_title': 'Calendario',
-        'title': 'Calendario de Citas'
-    }
-    
-    return render(request, 'citas/reservas/calendario.html', context)
-
 @csrf_exempt
 def crear_cita(request):
     """
@@ -1429,17 +1421,13 @@ def horarios_json(request):
 def prueba_template(request):
     from django.contrib.auth import get_user_model
     from citas.models import EspecialidadMedica, UsuarioMedico, MedicoEspecialidad
-    from django.db.models import Prefetch
+   # from django.db.models import Prefetch
     
     # Obtener todas las especialidades
     especialidades = EspecialidadMedica.objects.all().order_by('Espacialidad_Medica')
     
     # Obtener todos los médicos activos con sus especialidades
-    medicos = UsuarioMedico.objects.filter(activo=True).prefetch_related(
-        Prefetch('medicoespecialidad_set', 
-                queryset=MedicoEspecialidad.objects.filter(principal=True),
-                to_attr='especialidades_principales')
-    ).order_by('Nombres_Medico', 'Apellidos_Medicos')
+    medicos = UsuarioMedico.objects.filter(activo=True).order_by('Nombres_Medico', 'Apellidos_Medicos')
     
     # Crear una lista de médicos con su especialidad principal
     medicos_con_especialidad = []
@@ -1448,8 +1436,6 @@ def prueba_template(request):
             'id_Medico': medico.id_Medico,
             'Nombres_Medico': medico.Nombres_Medico,
             'Apellidos_Medicos': medico.Apellidos_Medicos,
-            'especialidad_principal_id': medico.especialidades_principales[0].especialidad.id_Especialidad_Medica if hasattr(medico, 'especialidades_principales') and medico.especialidades_principales else None,
-            'especialidad_principal': medico.especialidades_principales[0].especialidad.Espacialidad_Medica if hasattr(medico, 'especialidades_principales') and medico.especialidades_principales else 'Sin especialidad'
         }
         medicos_con_especialidad.append(medico_data)
     

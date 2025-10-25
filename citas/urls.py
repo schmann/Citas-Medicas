@@ -1,7 +1,8 @@
 from django.urls import path, include
-from django.contrib.auth.decorators import login_required
+from django.contrib.auth.decorators import login_required, user_passes_test
 from django.views.decorators.csrf import csrf_exempt
 from django.views.decorators.http import require_http_methods
+from django.contrib.admin.views.decorators import staff_member_required
 from . import views
 from .views_consultorios import (
     ConsultorioListView, ConsultorioCreateView, ConsultorioUpdateView,
@@ -48,10 +49,17 @@ urlpatterns = [
 
     # URLs para la API de Citas
     path('api/pacientes/', csrf_exempt(views.obtener_pacientes), name='obtener_pacientes'),
-    path('api/cancelar-cita/<int:cita_id>/', csrf_exempt(views.cancelar_cita), name='cancelar_cita'),
     
-    # Nuevo calendario mejorado
-    path('calendario-nuevo/', login_required(views.calendario_nuevo_view), name='calendario_nuevo'),
+    # Vista del Calendario
+    path('calendario-nuevo/', 
+         staff_member_required(
+             user_passes_test(
+                 lambda u: u.has_perm('citas.view_citasreservadas'), 
+                 login_url='admin:login'
+             )(views.calendario_nuevo_view)
+         ), 
+         name='calendario_nuevo'),
+    path('api/cancelar-cita/<int:cita_id>/', csrf_exempt(views.cancelar_cita), name='cancelar_cita'),
     
     # URLs para AJAX
     path('ajax/obtener-pacientes/', csrf_exempt(views.obtener_pacientes), name='obtener_pacientes'),
@@ -61,13 +69,6 @@ urlpatterns = [
     path('bancos/', views.BancoListView.as_view(), name='banco_list'),
     path('bancos/nuevo/', views.BancoCreateView.as_view(), name='banco_create'),
     path('bancos/editar/<int:pk>/', views.BancoUpdateView.as_view(), name='banco_update'),
-    
-    # URLs para el Calendario de Citas
-    path('calendario/', views.calendario_view, name='calendario'),
-    path('api/eventos/', csrf_exempt(views.obtener_eventos), name='obtener_eventos'),
-    
-    # API para obtener especialidades de un médico
-    path('api/get-especialidades/<int:medico_id>/', csrf_exempt(views.get_especialidades_medico), name='get_especialidades_medico'),
     path('bancos/eliminar/<int:pk>/', views.BancoDeleteView.as_view(), name='banco_delete'),
 
     # Ruta para horarios JSON
@@ -76,7 +77,6 @@ urlpatterns = [
     # Rutas para el calendario y gestión de citas
     path('agenda/', views.agenda_medico, name='agenda_medico'),
     path('api/horarios-medico/<int:medico_id>/<int:especialidad_id>/', csrf_exempt(views.get_horarios_medico_especialidad), name='get_horarios_medico_especialidad'),
-    path('prueba/', views.prueba_template, name='prueba_template'),
 
      # URLs para el calendario con disponibilidad
     path('calendario-nuevo/', views.calendario_nuevo_view, name='calendario_nuevo'),
