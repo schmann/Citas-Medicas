@@ -440,7 +440,7 @@ JAZZMIN_SETTINGS = {
         {"name": "Documentación", "url": "https://django-jazzmin.com/", "new_window": True, "icon": "fas fa-book"},
     ],
     
-    "theme": "cosmo",
+    "theme": "flatly",
     "dark_mode_theme": "darkly",
     "toggle_mode_btn": True,
     
@@ -484,7 +484,7 @@ JAZZMIN_UI_TWEAKS = {
     "sidebar_nav_compact_style": True,
     "sidebar_nav_legacy_style": False,
     "sidebar_nav_flat_style": False,
-    "theme": "cosmo",
+    "theme": "flatly",
     "dark_mode_vars": {
         "primary": "#0d6efd", "secondary": "#6c757d", "info": "#17a2b8",
     },

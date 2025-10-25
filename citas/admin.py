@@ -1,35 +1,24 @@
-# citas/admin.py
-
-# Importaciones de Django
-from django import forms
 from django.contrib import admin
-from django.contrib.auth.models import User, Group
-from django.contrib.auth.admin import UserAdmin, GroupAdmin 
+from django import forms
 from django.http import JsonResponse
-from django.urls import path, reverse, include
+from django.urls import path, reverse
 from django.utils.safestring import mark_safe
-from django.urls import reverse_lazy
 from django.contrib import messages
-from django.views.generic import RedirectView
-from .models import CitasReservadas
-
-# Importaciones de terceros
-from dateutil import rrule
-import datetime
-import pytz
+from django.shortcuts import render, redirect
+from django.contrib.auth.views import redirect_to_login
+from django.core.exceptions import PermissionDenied
 from django.utils import timezone
-
-# Importar modelos de la aplicación
+from django.contrib.auth.models import User, Group
+from django.contrib.auth.admin import UserAdmin, GroupAdmin
+import datetime
 from .models import (
     HorarioCita, Turno, Paciente, Prefijo_CIDNI, Sexo, EstadoCivil, Pais,
     Estado, Ciudad, Municipio, Parroquia, DireccionPaciente, 
     EspecialidadMedica, UsuarioMedico, DatosSeniat, MedicoEspecialidad,
-    Consultorio, Banco
+    Consultorio, Banco, CitasReservadas
 )
+from .forms import HorarioCitaForm, FREQ_CHOICES, DAY_CHOICES
 
-# ----------------------------------------------------
-# 1. ADMIN SITE PERSONALIZADO (SIMPLIFICADO PARA JAZZMIN)
-# ----------------------------------------------------
 class CustomAdminSite(admin.AdminSite):
     site_header = 'Unidad Médica Admin'
     site_title = 'Unidad Médica'
@@ -47,38 +36,20 @@ class CustomAdminSite(admin.AdminSite):
         return custom_urls + urls
         
     def calendario_view(self, request):
-        # Verificar permisos
-        if not request.user.is_staff:
-            from django.contrib.auth.views import redirect_to_login
-            return redirect_to_login(request.get_full_path())
-            
-        # Verificar permiso específico
-        if not request.user.has_perm('citas.view_citasreservadas'):
-            from django.core.exceptions import PermissionDenied
-            raise PermissionDenied
-            
-        context = dict(
-            self.each_context(request),
-            title='Calendario de Citas',
-            app_label='citas',
-            is_popup=False,
-            has_view_permission=True,
-            has_add_permission=request.user.has_perm('citas.add_citasreservadas'),
-            has_change_permission=request.user.has_perm('citas.change_citasreservadas'),
-            has_delete_permission=request.user.has_perm('citas.delete_citasreservadas'),
-        )
-        from django.shortcuts import render
-        return render(request, 'citas/reservas/calendario_nuevo.html', context)
-        
+        # ... mantén tu código original del calendario ...
+        pass
+
     def get_app_list(self, request):
         app_list = super().get_app_list(request)
         
-        # Verificar si el usuario tiene permiso para ver el calendario
+        # Reorganizar el menú para crear estructura jerárquica COMPATIBLE con Jazzmin
+        reorganized_app_list = []
+        
+        # 2. CALENDARIO
         if request.user.has_perm('citas.view_citasreservadas'):
-            # Agregar el enlace al calendario
-            app_list.append({
-                'name': 'Calendario',
-                'app_label': 'citas_calendario',
+            reorganized_app_list.append({
+                'name': '📅 Calendario',
+                'app_label': 'calendario',
                 'models': [
                     {
                         'name': 'Reservar Cita',
@@ -89,9 +60,96 @@ class CustomAdminSite(admin.AdminSite):
                 ]
             })
         
-        return app_list
+        # 3. GESTIÓN MÉDICA - ESTRUCTURA COMPATIBLE CON JAZZMIN
+        gestion_medica_app = {
+            'name': '🏥 Gestión Médica',
+            'app_label': 'gestion_medica',
+            'models': []
+        }
+        
+        # Subgrupo: Pacientes
+        pacientes_models = self._get_models_by_names(app_list, ['paciente', 'direccionpaciente', 'familia', 'parentesco'])
+        if pacientes_models:
+            gestion_medica_app['models'].extend(pacientes_models)
+        
+        # Subgrupo: Médicos
+        medicos_models = self._get_models_by_names(app_list, ['usuariomedico', 'medicoespecialidad', 'horariocita', 'dianolaborable'])
+        if medicos_models:
+            gestion_medica_app['models'].extend(medicos_models)
+        
+        # Subgrupo: Consultas
+        consultas_models = self._get_models_by_names(app_list, ['consulta', 'diagnostico', 'receta', 'examen'])
+        if consultas_models:
+            gestion_medica_app['models'].extend(consultas_models)
+        
+        if gestion_medica_app['models']:
+            reorganized_app_list.append(gestion_medica_app)
+        
+        # 4. UBICACIONES GEOGRÁFICAS
+        ubicaciones_models = self._get_models_by_names(app_list, ['pais', 'estado', 'ciudad', 'municipio', 'parroquia'])
+        if ubicaciones_models:
+            reorganized_app_list.append({
+                'name': '🌎 Ubicaciones',
+                'app_label': 'ubicaciones',
+                'models': ubicaciones_models
+            })
+        
+        # 5. CATÁLOGOS MÉDICOS
+        catalogos_models = self._get_models_by_names(app_list, ['consultorio', 'especialidadmedica', 'subespecialidad', 'turno'])
+        if catalogos_models:
+            reorganized_app_list.append({
+                'name': '📊 Catálogos Médicos',
+                'app_label': 'catalogos_medicos',
+                'models': catalogos_models
+            })
+        
+        # 6. CATÁLOGOS DEL SISTEMA
+        sistema_models = self._get_models_by_names(app_list, ['banco', 'sexo', 'estadocivil', 'prefijo_cidni'])
+        if sistema_models:
+            reorganized_app_list.append({
+                'name': '⚙️ Catálogos del Sistema',
+                'app_label': 'catalogos_sistema',
+                'models': sistema_models
+            })
+        
+        # 7. ADMINISTRACIÓN (usuarios y grupos)
+        admin_app = self._get_app_by_name(app_list, 'auth')
+        if admin_app:
+            admin_app['name'] = '🔐 Administración'
+            reorganized_app_list.append(admin_app)
+        
+        # 8. SITIOS (si existe)
+        sites_app = self._get_app_by_name(app_list, 'sites')
+        if sites_app:
+            sites_app['name'] = '🌐 Sitios'
+            reorganized_app_list.append(sites_app)
+        
+        return reorganized_app_list
 
-    # Métodos de vista para AJAX
+    def _get_models_by_names(self, app_list, model_names):
+        """Obtener modelos por nombres de forma compatible con Jazzmin"""
+        models = []
+        for app in app_list:
+            if app['app_label'] == 'citas':
+                for model in app['models']:
+                    if model['object_name'].lower() in model_names:
+                        # Asegurar que el modelo tenga todos los campos requeridos
+                        if 'admin_url' not in model:
+                            model['admin_url'] = f"/admin/citas/{model['object_name'].lower()}/"
+                        if 'add_url' not in model:
+                            model['add_url'] = f"/admin/citas/{model['object_name'].lower()}/add/"
+                        if 'view_only' not in model:
+                            model['view_only'] = False
+                        models.append(model)
+        return models
+
+    def _get_app_by_name(self, app_list, app_name):
+        """Obtener una app por nombre"""
+        for app in app_list:
+            if app['app_label'] == app_name:
+                return app
+        return None
+    # Métodos de vista para AJAX (mantener tus métodos originales)
     def get_ciudades(self, request):
         estado_id = request.GET.get('estado_id')
         if estado_id:
@@ -117,16 +175,10 @@ class CustomAdminSite(admin.AdminSite):
         medico_id = request.GET.get('medico_id')
         if medico_id:
             try:
-                # Obtener el médico con sus especialidades
-                from django.db.models import Prefetch
-                from .models import MedicoEspecialidad, EspecialidadMedica
-                
-                # Obtener todas las especialidades del médico, incluyendo las inactivas
                 especialidades = MedicoEspecialidad.objects.filter(
                     medico_id=medico_id
                 ).select_related('especialidad').order_by('especialidad__Espacialidad_Medica')
                 
-                # Preparar los datos para la respuesta
                 especialidades_data = []
                 for especialidad in especialidades:
                     especialidades_data.append({
@@ -136,11 +188,9 @@ class CustomAdminSite(admin.AdminSite):
                         'activo': especialidad.activo
                     })
                 
-                print(f"[DEBUG] Especialidades encontradas para médico {medico_id}: {len(especialidades_data)}")
                 return JsonResponse(especialidades_data, safe=False)
                 
             except Exception as e:
-                print(f"[ERROR] Error al obtener especialidades: {str(e)}")
                 return JsonResponse([], safe=False)
         return JsonResponse([], safe=False)
 
@@ -150,159 +200,6 @@ admin_site = CustomAdminSite(name='citas_admin')
 # --------------------------------------------------------------------------
 # 2. DEFINICIONES DE HORARIO Y TURNO (Para la Recurrencia)
 # --------------------------------------------------------------------------
-
-# Opciones para la regla de repetición (RRULE)
-FREQ_CHOICES = (
-    ('DAILY', 'Diario'),
-    ('WEEKLY', 'Semanal'),
-    ('MONTHLY', 'Mensual'),
-)
-
-# Opciones para los días de la semana (BYDAY)
-DAY_CHOICES = (
-    ('MO', 'Lunes'), ('TU', 'Martes'), ('WE', 'Miércoles'), 
-    ('TH', 'Jueves'), ('FR', 'Viernes'), ('SA', 'Sábado'), ('SU', 'Domingo'),
-)
-
-class HorarioCitaForm(forms.ModelForm):
-    """
-    Formulario para gestionar los horarios de citas con campos separados para fecha y hora.
-    """
-    # Campos para fecha y hora de inicio
-    fecha_inicio = forms.DateField(
-        widget=forms.DateInput(attrs={'type': 'date', 'class': 'form-control'}),
-        required=True,
-        label='Fecha de inicio'
-    )
-    hora_inicio = forms.TimeField(
-        widget=forms.TimeInput(attrs={'type': 'time', 'class': 'form-control', 'step': '300'}),
-        required=True,
-        label='Hora de inicio'
-    )
-    
-    # Campos para fecha y hora de fin
-    fecha_fin = forms.DateField(
-        widget=forms.DateInput(attrs={'type': 'date', 'class': 'form-control'}),
-        required=True,
-        label='Fecha de fin'
-    )
-    hora_fin = forms.TimeField(
-        widget=forms.TimeInput(attrs={'type': 'time', 'class': 'form-control', 'step': '300'}),
-        required=True,
-        label='Hora de fin'
-    )
-    
-    # Campos de recurrencia
-    recurrence_frequency = forms.ChoiceField(
-        choices=FREQ_CHOICES,
-        required=False,
-        label="Frecuencia de Repetición",
-        initial='WEEKLY'
-    )
-    
-    recurrence_byday = forms.MultipleChoiceField(
-        choices=DAY_CHOICES,
-        required=False,
-        label="Días de la semana para repetir (solo si es Semanal)",
-        widget=admin.widgets.FilteredSelectMultiple("Días", is_stacked=False)
-    )
-    
-    recurrence_until = forms.DateField(
-        required=False,
-        label="Repetir hasta (opcional, formato AAAA-MM-DD)",
-        widget=forms.DateInput(attrs={'type': 'date', 'class': 'form-control'})
-    )
-
-    class Meta:
-        model = HorarioCita
-        fields = '__all__'
-        exclude = ('start_datetime', 'end_datetime')  # Excluimos los campos originales
-
-    def __init__(self, *args, **kwargs):
-        super().__init__(*args, **kwargs)
-        
-        # Si estamos editando un objeto existente, establecer valores iniciales
-        if self.instance and self.instance.pk:
-            tz = timezone.get_current_timezone()
-            if self.instance.start_datetime:
-                local_start = timezone.localtime(self.instance.start_datetime, tz)
-                self.initial['fecha_inicio'] = local_start.date()
-                self.initial['hora_inicio'] = local_start.time()
-            if self.instance.end_datetime:
-                local_end = timezone.localtime(self.instance.end_datetime, tz)
-                self.initial['fecha_fin'] = local_end.date()
-                self.initial['hora_fin'] = local_end.time()
-
-    def clean(self):
-        cleaned_data = super().clean()
-        tz = timezone.get_current_timezone()
-
-        # Obtener fechas y horas del formulario
-        fecha_inicio = cleaned_data.get('fecha_inicio')
-        hora_inicio = cleaned_data.get('hora_inicio')
-        fecha_fin = cleaned_data.get('fecha_fin')
-        hora_fin = cleaned_data.get('hora_fin')
-
-        # Combinar fecha y hora
-        if fecha_inicio and hora_inicio:
-            start_datetime = timezone.make_aware(
-                datetime.datetime.combine(fecha_inicio, hora_inicio),
-                tz
-            )
-            cleaned_data['start_datetime'] = start_datetime
-
-        if fecha_fin and hora_fin:
-            end_datetime = timezone.make_aware(
-                datetime.datetime.combine(fecha_fin, hora_fin),
-                tz
-            )
-            cleaned_data['end_datetime'] = end_datetime
-
-        # Validar que la fecha de fin sea posterior a la de inicio
-        if 'start_datetime' in cleaned_data and 'end_datetime' in cleaned_data:
-            if cleaned_data['end_datetime'] <= cleaned_data['start_datetime']:
-                self.add_error('fecha_fin', 'La fecha y hora de finalización debe ser posterior a la de inicio')
-                self.add_error('hora_fin', '')
-
-        # Procesar regla de recurrencia si existe
-        freq = cleaned_data.get('recurrence_frequency')
-        byday = cleaned_data.get('recurrence_byday')
-        until = cleaned_data.get('recurrence_until')
-        
-        if freq:
-            # Construir la regla de recurrencia
-            rrule_parts = [f"FREQ={freq}"]
-            
-            if freq == 'WEEKLY' and byday:
-                rrule_parts.append(f"BYDAY={','.join(byday)}")
-            
-            if until:
-                # Convertir la fecha de fin a UTC para la regla de recurrencia
-                dt_until = datetime.datetime.combine(until, datetime.time(23, 59, 59))
-                dt_until = timezone.make_aware(dt_until, tz).astimezone(datetime.timezone.utc)
-                rrule_parts.append(f"UNTIL={dt_until.strftime('%Y%m%dT%H%M%SZ')}")
-            
-            cleaned_data['recurrence_rule'] = ";".join(rrule_parts)
-        else:
-            cleaned_data['recurrence_rule'] = None
-
-        return cleaned_data
-        
-    def save(self, commit=True):
-        """Asegura que los campos generados en clean se guarden correctamente."""
-        instance = super().save(commit=False)
-        
-        # Asignar los valores de los campos calculados
-        if 'start_datetime' in self.cleaned_data:
-            instance.start_datetime = self.cleaned_data['start_datetime']
-        if 'end_datetime' in self.cleaned_data:
-            instance.end_datetime = self.cleaned_data['end_datetime']
-        if 'recurrence_rule' in self.cleaned_data:
-            instance.recurrence_rule = self.cleaned_data['recurrence_rule']
-        
-        if commit:
-            instance.save()
-        return instance  
 
 class HorarioCitaAdmin(admin.ModelAdmin):
     form = HorarioCitaForm
@@ -743,14 +640,13 @@ admin_site.register(Paciente, PacienteAdmin)
 admin_site.register(Consultorio, ConsultorioAdmin)
 admin_site.register(Banco, BancoAdmin)
 
-# Importar y registrar el CalendarioAdmin después de definir todos los modelos
-#from .admin_calendario import CalendarioAdmin
+# Modelos de ubicación
 admin_site.register(Pais, PaisAdmin)
 admin_site.register(Estado, EstadoAdmin)
 admin_site.register(Ciudad, CiudadAdmin)
 admin_site.register(Municipio, MunicipioAdmin)
 admin_site.register(Parroquia, ParroquiaAdmin)
 
-# Verificar si el modelo ya está registrado antes de registrarlo
+# Horarios
 if not admin_site.is_registered(HorarioCita):
    admin_site.register(HorarioCita, HorarioCitaAdmin)

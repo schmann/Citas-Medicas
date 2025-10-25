@@ -1,5 +1,3 @@
-# UnidadMedica/urls.py
-
 from django.contrib import admin
 from django.urls import path, include
 from django.contrib.auth import views as auth_views
@@ -10,7 +8,7 @@ from django.conf.urls.static import static
 from citas.admin import admin_site as citas_admin 
 
 urlpatterns = [
-    # 1. ADMIN UNIFICADO: Todo el tráfico admin va a tu sitio personalizado.
+    # Usar tu CustomAdminSite que tiene el menú organizado
     path('admin/', citas_admin.urls), 
 
     # 2. Citas
@@ -28,8 +26,3 @@ urlpatterns = [
 if settings.DEBUG:
     urlpatterns += static(settings.STATIC_URL, document_root=settings.STATIC_ROOT)
     urlpatterns += static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT)
-
-# Configuración del admin por defecto (Estos se aplicarán si citas_admin hereda de admin.AdminSite)
-admin.site.site_header = 'Unidad Médica Admin'
-admin.site.site_title = 'Unidad Médica Admin'
-admin.site.index_title = 'Bienvenido al Panel de Administración'

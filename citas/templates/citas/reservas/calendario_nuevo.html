@@ -613,80 +613,80 @@ document.addEventListener('DOMContentLoaded', function() {
     // ==========================================================================
 
     function cargarDisponibilidadMedico(medicoId, especialidadId) {
-    console.log('🔄 Cargando disponibilidad para médico:', medicoId, 'especialidad:', especialidadId);
-    
-    if (!medicoId || !especialidadId) {
-        console.log('⚠️ No hay médico o especialidad seleccionada para cargar disponibilidad');
-        window.medicoSeleccionado = null;
-        window.especialidadSeleccionada = null;
+        console.log('🔄 Cargando disponibilidad para médico:', medicoId, 'especialidad:', especialidadId);
         
-        // Limpiar el calendario si no hay selección
-        if (window.calendar) {
-            window.calendar.removeAllEvents();
-        }
-        return;
-    }
-    
-    // Actualizar variables globales
-    window.medicoSeleccionado = medicoId;
-    window.especialidadSeleccionada = especialidadId;
-    
-    // Actualizar los selects del formulario
-    const selectMedico = document.getElementById('medico');
-    const selectEspecialidad = document.getElementById('especialidad');
-    const filtroMedico = document.getElementById('filtroMedico');
-    const filtroEspecialidad = document.getElementById('filtroEspecialidad');
-    
-    if (selectMedico) selectMedico.value = medicoId;
-    if (selectEspecialidad) selectEspecialidad.value = especialidadId;
-    if (filtroMedico) filtroMedico.value = medicoId;
-    if (filtroEspecialidad) filtroEspecialidad.value = especialidadId;
-    
-    // Función para cargar la disponibilidad
-    const cargarDisponibilidad = () => {
-        if (!window.calendar) {
-            console.error('❌ El calendario no está inicializado');
+        if (!medicoId || !especialidadId) {
+            console.log('⚠️ No hay médico o especialidad seleccionada para cargar disponibilidad');
+            window.medicoSeleccionado = null;
+            window.especialidadSeleccionada = null;
+            
+            // Limpiar el calendario si no hay selección
+            if (window.calendar) {
+                window.calendar.removeAllEvents();
+            }
             return;
         }
         
-        console.log('🔄 Recargando eventos del calendario...');
+        // Actualizar variables globales
+        window.medicoSeleccionado = medicoId;
+        window.especialidadSeleccionada = especialidadId;
         
-        // Obtener la vista actual para recargar los eventos
-        const view = window.calendar.view;
-        const start = view.activeStart;
-        const end = view.activeEnd;
+        // Actualizar los selects del formulario
+        const selectMedico = document.getElementById('medico');
+        const selectEspecialidad = document.getElementById('especialidad');
+        const filtroMedico = document.getElementById('filtroMedico');
+        const filtroEspecialidad = document.getElementById('filtroEspecialidad');
         
-        // Eliminar todos los eventos existentes
-        window.calendar.removeAllEvents();
+        if (selectMedico) selectMedico.value = medicoId;
+        if (selectEspecialidad) selectEspecialidad.value = especialidadId;
+        if (filtroMedico) filtroMedico.value = medicoId;
+        if (filtroEspecialidad) filtroEspecialidad.value = especialidadId;
         
-        // Forzar la recarga de eventos para el rango de fechas actual
-        window.calendar.refetchEvents({
-            start: start,
-            end: end,
-            startStr: start.toISOString(),
-            endStr: end.toISOString()
-        });
-        
-        console.log('✅ Eventos recargados correctamente');
-    };
-    
-    // Si el calendario ya está inicializado, recargar eventos
-    if (window.calendar) {
-        cargarDisponibilidad();
-    } else {
-        console.log('⚠️ Calendario no inicializado, inicializando...');
-        // Si el calendario no está inicializado, inicializarlo
-        if (document.readyState === 'complete') {
-            inicializarCalendario();
-        } else {
-            document.addEventListener('DOMContentLoaded', () => {
-                inicializarCalendario();
-                // Esperar un momento para que el calendario se inicialice completamente
-                setTimeout(cargarDisponibilidad, 500);
+        // Función para cargar la disponibilidad
+        const cargarDisponibilidad = () => {
+            if (!window.calendar) {
+                console.error('❌ El calendario no está inicializado');
+                return;
+            }
+            
+            console.log('🔄 Recargando eventos del calendario...');
+            
+            // Obtener la vista actual para recargar los eventos
+            const view = window.calendar.view;
+            const start = view.activeStart;
+            const end = view.activeEnd;
+            
+            // Eliminar todos los eventos existentes
+            window.calendar.removeAllEvents();
+            
+            // Forzar la recarga de eventos para el rango de fechas actual
+            window.calendar.refetchEvents({
+                start: start,
+                end: end,
+                startStr: start.toISOString(),
+                endStr: end.toISOString()
             });
+            
+            console.log('✅ Eventos recargados correctamente');
+        };
+        
+        // Si el calendario ya está inicializado, recargar eventos
+        if (window.calendar) {
+            cargarDisponibilidad();
+        } else {
+            console.log('⚠️ Calendario no inicializado, inicializando...');
+            // Si el calendario no está inicializado, inicializarlo
+            if (document.readyState === 'complete') {
+                inicializarCalendario();
+            } else {
+                document.addEventListener('DOMContentLoaded', () => {
+                    inicializarCalendario();
+                    // Esperar un momento para que el calendario se inicialice completamente
+                    setTimeout(cargarDisponibilidad, 500);
+                });
+            }
         }
     }
-}
 
     function cargarHorasDisponiblesReales(fecha, medicoId, especialidadId, horaPreseleccionada = null) {
         const selectHora = document.getElementById('hora');
@@ -837,6 +837,7 @@ document.addEventListener('DOMContentLoaded', function() {
                     console.log(`✅ Manteniendo especialidad seleccionada: ${especialidadId}`);
                     
                     // Establecer la especialidad en el select del modal
+                    const selectEspecialidad = document.getElementById('especialidad');
                     if (selectEspecialidad) {
                         selectEspecialidad.value = especialidadId;
                         console.log(`✅ Especialidad establecida en select modal: ${especialidadId}`);
@@ -849,7 +850,7 @@ document.addEventListener('DOMContentLoaded', function() {
                 
                 // Forzar la actualización de las especialidades del médico en el modal
                 console.log('🔄 Actualizando especialidades en el modal...');
-                cargarEspecialidadesMedico(unicoMedicoId, especialidadId);
+                cargarEspecialidadesMedico(unicoMedicoId, especialidadId, true); // true = es para modal
                 
                 // Disparar evento de cambio
                 const event = new Event('change');
@@ -876,168 +877,193 @@ document.addEventListener('DOMContentLoaded', function() {
         }
     }
 
-   function cargarEspecialidadesMedico(medicoId, especialidadSeleccionada = null) {
-    try {
-        console.log('🔄 Iniciando carga de especialidades para médico:', medicoId, 'con especialidad seleccionada:', especialidadSeleccionada);
-        
-        const selectEspecialidad = document.getElementById('especialidad');
-        const selectMedico = document.getElementById('medico');
-        const filtroEspecialidad = document.getElementById('filtroEspecialidad');
-        
-        if (!selectEspecialidad) {
-            console.error('❌ No se encontró el select de especialidad');
-            return;
-        }
-
-        // Usar la especialidad seleccionada si se proporciona, de lo contrario usar la actual
-        const especialidadAnterior = especialidadSeleccionada || selectEspecialidad.value;
-        console.log('📌 Especialidad anterior:', especialidadAnterior);
-        
-        // Limpiar y deshabilitar temporalmente el select
-        selectEspecialidad.innerHTML = '<option value="">Seleccione una especialidad</option>';
-        selectEspecialidad.disabled = true;
-
-        if (!medicoId) {
-            console.log('⚠️ No se seleccionó médico');
-            return;
-        }
-
-        // Buscar las especialidades del médico en los datos ya cargados
-        const opcionesMedicos = document.querySelectorAll('#medicosData option');
-        const especialidadesDelMedico = [];
-        const especialidadesUnicas = new Set(); // Para evitar duplicados
-
-        console.log(`🔍 Buscando especialidades para médico ${medicoId}...`);
-        
-        // Recopilar todas las especialidades únicas de este médico
-        opcionesMedicos.forEach(opcion => {
-            if (opcion.value === medicoId) {
-                const especialidadId = opcion.getAttribute('data-especialidad');
-                const nombreEspecialidad = opcion.getAttribute('data-especialidad-nombre');
-                const esActiva = !opcion.classList.contains('especialidad-inactiva');
-                
-                console.log(`  - Opción encontrada: ${nombreEspecialidad} (ID: ${especialidadId}, Activa: ${esActiva})`);
-                
-                if (especialidadId && nombreEspecialidad) {
-                    // Usar un identificador único para evitar duplicados
-                    const especialidadKey = `${especialidadId}-${nombreEspecialidad}`;
-                    
-                    if (!especialidadesUnicas.has(especialidadKey)) {
-                        especialidadesUnicas.add(especialidadKey);
-                        especialidadesDelMedico.push({
-                            id: especialidadId,
-                            nombre: nombreEspecialidad,
-                            activo: esActiva
-                        });
-                    }
-                }
-            }
-        });
-
-        console.log(`📋 Especialidades encontradas para médico ${medicoId}:`, especialidadesDelMedico);
-
-        if (especialidadesDelMedico.length > 0) {
-            // Ordenar las especialidades por nombre
-            especialidadesDelMedico.sort((a, b) => a.nombre.localeCompare(b.nombre));
+    function cargarEspecialidadesMedico(medicoId, especialidadSeleccionada = null, esParaModal = false) {
+        try {
+            console.log('🔄 Iniciando carga de especialidades para médico:', medicoId, 
+                       'con especialidad seleccionada:', especialidadSeleccionada,
+                       'esParaModal:', esParaModal);
             
-            // Limpiar el select de especialidades
+            const selectEspecialidad = document.getElementById('especialidad');
+            const filtroEspecialidad = document.getElementById('filtroEspecialidad');
+            
+            if (!selectEspecialidad) {
+                console.error('❌ No se encontró el select de especialidad');
+                return;
+            }
+
+            // Determinar qué especialidad mantener
+            let especialidadAMantener = especialidadSeleccionada;
+            
+            // Si es para el modal y no se especificó especialidad, usar la del filtro principal
+            if (esParaModal && !especialidadSeleccionada && filtroEspecialidad) {
+                especialidadAMantener = filtroEspecialidad.value;
+                console.log('📌 Usando especialidad del filtro principal:', especialidadAMantener);
+            }
+            
+            console.log('📌 Especialidad a mantener:', especialidadAMantener);
+            
+            // Limpiar y deshabilitar temporalmente el select
             selectEspecialidad.innerHTML = '<option value="">Seleccione una especialidad</option>';
+            selectEspecialidad.disabled = true;
+
+            if (!medicoId) {
+                console.log('⚠️ No se seleccionó médico');
+                return;
+            }
+
+            // Buscar las especialidades del médico en los datos ya cargados
+            const opcionesMedicos = document.querySelectorAll('#medicosData option');
+            const especialidadesDelMedico = [];
+            const especialidadesUnicas = new Set();
+
+            console.log(`🔍 Buscando especialidades para médico ${medicoId}...`);
             
-            // Variables para el seguimiento
-            let especialidadValida = false;
-            let primeraEspecialidadActiva = null;
-            
-            // Llenar el select con las especialidades
-            especialidadesDelMedico.forEach(esp => {
-                const option = document.createElement('option');
-                option.value = esp.id;
-                option.textContent = esp.nombre;
-                
-                // Guardar la primera especialidad activa
-                if (esp.activo && !primeraEspecialidadActiva) {
-                    primeraEspecialidadActiva = esp.id;
-                }
-                
-                // Marcar como inactiva si es necesario
-                if (!esp.activo) {
-                    option.textContent += ' (Inactiva)';
-                    option.dataset.inactive = true;
-                    option.disabled = true; // Deshabilitar opciones inactivas
-                }
-                
-                // Verificar si esta es la especialidad que estaba seleccionada previamente
-                if (esp.id === especialidadAnterior) {
-                    if (esp.activo) {
-                        option.selected = true;
-                        especialidadValida = true;
-                        console.log(`🔁 Manteniendo especialidad seleccionada: ${esp.nombre} (${esp.id})`);
-                    } else {
-                        console.log(`⚠️ La especialidad anterior (${esp.nombre}) está inactiva, no se mantendrá seleccionada`);
+            // Recopilar todas las especialidades únicas de este médico
+            opcionesMedicos.forEach(opcion => {
+                if (opcion.value === medicoId) {
+                    const especialidadId = opcion.getAttribute('data-especialidad');
+                    const nombreEspecialidad = opcion.getAttribute('data-especialidad-nombre');
+                    const esActiva = !opcion.classList.contains('especialidad-inactiva');
+                    
+                    console.log(`  - Opción encontrada: ${nombreEspecialidad} (ID: ${especialidadId}, Activa: ${esActiva})`);
+                    
+                    if (especialidadId && nombreEspecialidad) {
+                        const especialidadKey = `${especialidadId}-${nombreEspecialidad}`;
+                        
+                        if (!especialidadesUnicas.has(especialidadKey)) {
+                            especialidadesUnicas.add(especialidadKey);
+                            especialidadesDelMedico.push({
+                                id: especialidadId,
+                                nombre: nombreEspecialidad,
+                                activo: esActiva
+                            });
+                        }
                     }
                 }
-                
-                selectEspecialidad.appendChild(option);
             });
-            
-            selectEspecialidad.disabled = false;
-            console.log(`✅ ${especialidadesDelMedico.length} especialidades cargadas para el médico`);
-            
-            // Determinar qué especialidad cargar
-            let especialidadACargar = '';
-            
-            if (especialidadValida) {
-                // Si la especialidad anterior sigue siendo válida, usarla
-                especialidadACargar = especialidadAnterior;
-            } else if (primeraEspecialidadActiva) {
-                // Si no, usar la primera especialidad activa disponible
-                especialidadACargar = primeraEspecialidadActiva;
-                selectEspecialidad.value = especialidadACargar;
-                console.log(`🔄 Seleccionando primera especialidad activa: ${especialidadACargar}`);
-            } else if (especialidadesDelMedico.length > 0) {
-                // Si no hay especialidades activas, usar la primera disponible (inactiva)
-                especialidadACargar = especialidadesDelMedico[0].id;
-                selectEspecialidad.value = especialidadACargar;
-                console.log(`⚠️ No hay especialidades activas, seleccionando: ${especialidadACargar}`);
-            }
-            
-            // Actualizar la variable global
-            window.especialidadSeleccionada = especialidadACargar;
-            
-            // Actualizar el filtro de especialidad si existe
-            if (filtroEspecialidad) {
-                filtroEspecialidad.value = especialidadACargar || '';
-            }
-            
-            // Cargar disponibilidad para la especialidad seleccionada
-            if (especialidadACargar) {
-                console.log(`🔄 Cargando disponibilidad para médico ${medicoId} y especialidad ${especialidadACargar}...`);
-                cargarDisponibilidadMedico(medicoId, especialidadACargar);
+
+            console.log(`📋 Especialidades encontradas para médico ${medicoId}:`, especialidadesDelMedico);
+
+            if (especialidadesDelMedico.length > 0) {
+                // Ordenar las especialidades por nombre
+                especialidadesDelMedico.sort((a, b) => a.nombre.localeCompare(b.nombre));
+                
+                // Limpiar el select de especialidades
+                selectEspecialidad.innerHTML = '<option value="">Seleccione una especialidad</option>';
+                
+                // Variables para el seguimiento
+                let especialidadValida = false;
+                let primeraEspecialidadActiva = null;
+                
+                // Llenar el select con las especialidades
+                especialidadesDelMedico.forEach(esp => {
+                    const option = document.createElement('option');
+                    option.value = esp.id;
+                    option.textContent = esp.nombre;
+                    
+                    // Guardar la primera especialidad activa
+                    if (esp.activo && !primeraEspecialidadActiva) {
+                        primeraEspecialidadActiva = esp.id;
+                    }
+                    
+                    // Marcar como inactiva si es necesario
+                    if (!esp.activo) {
+                        option.textContent += ' (Inactiva)';
+                        option.dataset.inactive = true;
+                        option.disabled = true;
+                    }
+                    
+                    // Verificar si esta es la especialidad que queremos mantener
+                    if (esp.id === especialidadAMantener) {
+                        if (esp.activo) {
+                            option.selected = true;
+                            especialidadValida = true;
+                            console.log(`🔁 Manteniendo especialidad seleccionada: ${esp.nombre} (${esp.id})`);
+                        } else {
+                            console.log(`⚠️ La especialidad a mantener (${esp.nombre}) está inactiva, no se mantendrá seleccionada`);
+                        }
+                    }
+                    
+                    selectEspecialidad.appendChild(option);
+                });
+                
+                selectEspecialidad.disabled = false;
+                console.log(`✅ ${especialidadesDelMedico.length} especialidades cargadas para el médico`);
+                
+                // Determinar qué especialidad cargar
+                let especialidadACargar = '';
+                
+                if (especialidadValida) {
+                    // Si la especialidad a mantener es válida, usarla
+                    especialidadACargar = especialidadAMantener;
+                } else if (primeraEspecialidadActiva) {
+                    // Si no, usar la primera especialidad activa disponible
+                    especialidadACargar = primeraEspecialidadActiva;
+                    selectEspecialidad.value = especialidadACargar;
+                    console.log(`🔄 Seleccionando primera especialidad activa: ${especialidadACargar}`);
+                } else if (especialidadesDelMedico.length > 0) {
+                    // Si no hay especialidades activas, usar la primera disponible (inactiva)
+                    especialidadACargar = especialidadesDelMedico[0].id;
+                    selectEspecialidad.value = especialidadACargar;
+                    console.log(`⚠️ No hay especialidades activas, seleccionando: ${especialidadACargar}`);
+                }
+                
+                // IMPORTANTE: Solo actualizar la variable global si NO es para el modal
+                // o si estamos forzando un cambio
+                if (!esParaModal || !especialidadAMantener) {
+                    window.especialidadSeleccionada = especialidadACargar;
+                    console.log(`🔄 Actualizando especialidad global a: ${especialidadACargar}`);
+                } else {
+                    console.log(`📌 Preservando especialidad global: ${window.especialidadSeleccionada}`);
+                }
+                
+                // Actualizar el filtro de especialidad si existe y NO es para el modal
+                if (filtroEspecialidad && !esParaModal) {
+                    filtroEspecialidad.value = especialidadACargar || '';
+                }
+                
+                // Cargar disponibilidad para la especialidad seleccionada
+                if (especialidadACargar && medicoId) {
+                    // Para el modal, no recargamos el calendario automáticamente
+                    if (!esParaModal) {
+                        console.log(`🔄 Cargando disponibilidad para médico ${medicoId} y especialidad ${especialidadACargar}...`);
+                        cargarDisponibilidadMedico(medicoId, especialidadACargar);
+                    } else {
+                        console.log(`📌 Modal: No recargando calendario para médico ${medicoId} y especialidad ${especialidadACargar}`);
+                    }
+                } else {
+                    console.log('⚠️ No se pudo determinar una especialidad para cargar');
+                    // Limpiar el calendario si no hay especialidad válida y NO es para el modal
+                    if (window.calendar && !esParaModal) {
+                        window.calendar.removeAllEvents();
+                    }
+                }
             } else {
-                console.log('⚠️ No se pudo determinar una especialidad para cargar');
-                // Limpiar el calendario si no hay especialidad válida
-                if (window.calendar) {
+                console.error('❌ No se encontraron especialidades para este médico');
+                selectEspecialidad.innerHTML = '<option value="">No hay especialidades disponibles</option>';
+                // Solo limpiar la variable global si NO es para el modal
+                if (!esParaModal) {
+                    window.especialidadSeleccionada = null;
+                }
+                
+                // Limpiar el calendario si no hay especialidades y NO es para el modal
+                if (window.calendar && !esParaModal) {
                     window.calendar.removeAllEvents();
                 }
             }
-        } else {
-            console.error('❌ No se encontraron especialidades para este médico');
-            selectEspecialidad.innerHTML = '<option value="">No hay especialidades disponibles</option>';
-            window.especialidadSeleccionada = null;
-            
-            // Limpiar el calendario si no hay especialidades
-            if (window.calendar) {
-                window.calendar.removeAllEvents();
+        } catch (error) {
+            console.error('❌ Error en cargarEspecialidadesMedico:', error);
+            const selectEspecialidad = document.getElementById('especialidad');
+            if (selectEspecialidad) {
+                selectEspecialidad.innerHTML = '<option value="">Error al cargar especialidades</option>';
+            }
+            // Solo limpiar la variable global si NO es para el modal
+            if (!esParaModal) {
+                window.especialidadSeleccionada = null;
             }
         }
-    } catch (error) {
-        console.error('❌ Error en cargarEspecialidadesMedico:', error);
-        const selectEspecialidad = document.getElementById('especialidad');
-        if (selectEspecialidad) {
-            selectEspecialidad.innerHTML = '<option value="">Error al cargar especialidades</option>';
-        }
-        window.especialidadSeleccionada = null;
     }
-}
+
     // ==========================================================================
     // FUNCIONES DE GESTIÓN DE CITAS
     // ==========================================================================
@@ -1845,6 +1871,8 @@ document.addEventListener('DOMContentLoaded', function() {
                     option.textContent = nombreMedico;
                     option.selected = true;
                     selectMedico.appendChild(option);
+                    
+                    console.log('✅ Médico establecido en modal:', window.medicoSeleccionado);
                 }
             }
             
@@ -1864,6 +1892,8 @@ document.addEventListener('DOMContentLoaded', function() {
                     option.textContent = nombreEspecialidad;
                     option.selected = true;
                     selectEspecialidad.appendChild(option);
+                    
+                    console.log('✅ Especialidad establecida en modal:', window.especialidadSeleccionada);
                 }
             }
             
@@ -1872,21 +1902,7 @@ document.addEventListener('DOMContentLoaded', function() {
             // Mostrar el modal después de configurar los campos
             showModal('nuevaCitaModal');
             
-            // Forzar actualización de campos dependientes si es necesario
-            if (selectMedico && selectMedico.dispatchEvent) {
-                selectMedico.dispatchEvent(new Event('change'));
-            }
-            if (selectEspecialidad && selectEspecialidad.dispatchEvent) {
-                selectEspecialidad.dispatchEvent(new Event('change'));
-            }
-            
-            // Desplazarse al inicio del formulario
-            setTimeout(() => {
-                const modalContent = document.querySelector('.modal-content');
-                if (modalContent) {
-                    modalContent.scrollTop = 0;
-                }
-            }, 100);
+            console.log('📌 Estado final - Médico:', window.medicoSeleccionado, 'Especialidad:', window.especialidadSeleccionada);
             
         } catch (error) {
             console.error('❌ Error en configurarFormularioCita:', error);
@@ -2366,7 +2382,8 @@ document.addEventListener('DOMContentLoaded', function() {
         if (selectMedico) {
             selectMedico.addEventListener('change', function() {
                 console.log('🔄 Médico modal cambiado:', this.value);
-                cargarEspecialidadesMedico(this.value);
+                // Pasar true como tercer parámetro para indicar que es para el modal
+                cargarEspecialidadesMedico(this.value, null, true);
             });
         }
         
@@ -2377,18 +2394,22 @@ document.addEventListener('DOMContentLoaded', function() {
                 const especialidadId = this.value;
                 console.log('🔄 Especialidad modal cambiada:', especialidadId);
                 
-                // Actualizar la variable global
-                window.especialidadSeleccionada = especialidadId;
+                // IMPORTANTE: NO actualizar la variable global desde el modal
+                // Solo actualizar si realmente queremos cambiar la selección global
+                // window.especialidadSeleccionada = especialidadId;
+                
+                console.log('📌 Modal: Cambio de especialidad no afecta al calendario principal');
                 
                 // Actualizar el filtro de especialidad si existe
                 const filtroEspecialidad = document.getElementById('filtroEspecialidad');
                 if (filtroEspecialidad) {
-                    filtroEspecialidad.value = especialidadId;
+                    // Solo actualizar si el usuario quiere sincronizar
+                    // filtroEspecialidad.value = especialidadId;
                 }
                 
-                // Cargar disponibilidad para la nueva especialidad
+                // Cargar disponibilidad para la nueva especialidad (solo en el modal)
                 if (medicoId && especialidadId) {
-                    cargarDisponibilidadMedico(medicoId, especialidadId);
+                    console.log('📌 Modal: No recargando calendario principal');
                 }
                 
                 // Si hay una fecha seleccionada, cargar las horas disponibles
@@ -2411,21 +2432,8 @@ document.addEventListener('DOMContentLoaded', function() {
         }
 
         // Botones principales
-        const nuevaCitaBtn = document.getElementById('nuevaCitaBtn');
         const guardarCitaBtn = document.getElementById('guardarCitaBtn');
         const cancelarCitaBtn = document.getElementById('cancelarCitaBtn');
-        
-        if (nuevaCitaBtn) {
-            nuevaCitaBtn.addEventListener('click', function() {
-                console.log('➕ Botón nueva cita clickeado');
-                if (!medicoSeleccionado || !especialidadSeleccionada) {
-                    mostrarError('Por favor, seleccione un médico y especialidad en los filtros primero');
-                    return;
-                }
-                document.getElementById('citaForm').reset();
-                showModal('nuevaCitaModal');
-            });
-        }
         
         if (guardarCitaBtn) {
             guardarCitaBtn.addEventListener('click', guardarCita);
@@ -2481,7 +2489,6 @@ document.addEventListener('DOMContentLoaded', function() {
         console.log('📍 Elemento calendar:', document.getElementById('calendar'));
         console.log('📍 Filtro médico:', document.getElementById('filtroMedico'));
         console.log('📍 Filtro especialidad:', document.getElementById('filtroEspecialidad'));
-        console.log('📍 Botón nueva cita:', document.getElementById('nuevaCitaBtn'));
         
         // Verificar datos de médicos
         const medicosData = document.getElementById('medicosData');

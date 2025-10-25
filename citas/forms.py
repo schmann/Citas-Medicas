@@ -1,12 +1,15 @@
 # citas/forms.py
 
 from django import forms
+from django.contrib import admin
 from django.db import transaction
+from django.utils import timezone
+import datetime
 from .models import (
-    Paciente, DireccionPaciente, Prefijo_CIDNI, Sexo, 
-    EstadoCivil, Pais, Estado, Ciudad, Municipio, Parroquia, Banco
+    HorarioCita, Paciente, DireccionPaciente, Prefijo_CIDNI, Sexo, 
+    EstadoCivil, Pais, Estado, Ciudad, Municipio, Parroquia, Banco,
+    EspecialidadMedica, MedicoEspecialidad, UsuarioMedico, DatosSeniat, Consultorio
 )
-from .models import EspecialidadMedica, MedicoEspecialidad, UsuarioMedico, DatosSeniat, Consultorio
 
 # -------------------------------------------------------------
 # CLASES AUXILIARES
@@ -371,7 +374,6 @@ class ConsultorioForm(forms.ModelForm):
             if self.instance.ciudad_id:
                 self.fields['municipio'].queryset = Municipio.objects.filter(estado_id=self.instance.estado_id)
                 self.fields['municipio'].widget.attrs['disabled'] = False
-            
             if self.instance.municipio_id:
                 self.fields['parroquia'].queryset = Parroquia.objects.filter(municipio_id=self.instance.municipio_id)
                 self.fields['parroquia'].widget.attrs['disabled'] = False
@@ -379,9 +381,157 @@ class ConsultorioForm(forms.ModelForm):
 class BancoForm(forms.ModelForm):
     class Meta:
         model = Banco
-        fields = ['Bancos', 'Activo', 'Codigo_Bancario']
-        widgets = {
-            'Bancos': forms.TextInput(attrs={'class': 'form-control'}),
-            'Codigo_Bancario': forms.NumberInput(attrs={'class': 'form-control'}),
-            'Activo': forms.CheckboxInput(attrs={'class': 'form-check-input'}),
-        }
+        fields = '__all__'
+
+# Opciones para la regla de repetición (RRULE)
+FREQ_CHOICES = (
+    ('DAILY', 'Diario'),
+    ('WEEKLY', 'Semanal'),
+    ('MONTHLY', 'Mensual'),
+)
+
+# Opciones para los días de la semana (BYDAY)
+DAY_CHOICES = (
+    ('MO', 'Lunes'), ('TU', 'Martes'), ('WE', 'Miércoles'), 
+    ('TH', 'Jueves'), ('FR', 'Viernes'), ('SA', 'Sábado'), ('SU', 'Domingo'),
+)
+
+class HorarioCitaForm(forms.ModelForm):
+    """
+    Formulario para gestionar los horarios de citas con campos separados para fecha y hora.
+    """
+    # Campos para fecha y hora de inicio
+    fecha_inicio = forms.DateField(
+        widget=forms.DateInput(attrs={'type': 'date', 'class': 'form-control'}),
+        required=True,
+        label='Fecha de inicio'
+    )
+    hora_inicio = forms.TimeField(
+        widget=forms.TimeInput(attrs={'type': 'time', 'class': 'form-control', 'step': '300'}),
+        required=True,
+        label='Hora de inicio'
+    )
+    
+    # Campos para fecha y hora de fin
+    fecha_fin = forms.DateField(
+        widget=forms.DateInput(attrs={'type': 'date', 'class': 'form-control'}),
+        required=True,
+        label='Fecha de fin'
+    )
+    hora_fin = forms.TimeField(
+        widget=forms.TimeInput(attrs={'type': 'time', 'class': 'form-control', 'step': '300'}),
+        required=True,
+        label='Hora de fin'
+    )
+    
+    # Campos de recurrencia
+    recurrence_frequency = forms.ChoiceField(
+        choices=FREQ_CHOICES,
+        required=False,
+        label="Frecuencia de Repetición",
+        initial='WEEKLY'
+    )
+    
+    recurrence_byday = forms.MultipleChoiceField(
+        choices=DAY_CHOICES,
+        required=False,
+        label="Días de la semana para repetir (solo si es Semanal)",
+        widget=admin.widgets.FilteredSelectMultiple("Días", is_stacked=False)
+    )
+    
+    recurrence_until = forms.DateField(
+        required=False,
+        label="Repetir hasta (opcional, formato AAAA-MM-DD)",
+        widget=forms.DateInput(attrs={'type': 'date', 'class': 'form-control'})
+    )
+
+    class Meta:
+        model = HorarioCita
+        fields = '__all__'
+        exclude = ('start_datetime', 'end_datetime')  # Excluimos los campos originales
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        
+        # Si estamos editando un objeto existente, establecer valores iniciales
+        if self.instance and self.instance.pk:
+            tz = timezone.get_current_timezone()
+            if self.instance.start_datetime:
+                local_start = timezone.localtime(self.instance.start_datetime, tz)
+                self.initial['fecha_inicio'] = local_start.date()
+                self.initial['hora_inicio'] = local_start.time()
+            if self.instance.end_datetime:
+                local_end = timezone.localtime(self.instance.end_datetime, tz)
+                self.initial['fecha_fin'] = local_end.date()
+                self.initial['hora_fin'] = local_end.time()
+
+    def clean(self):
+        cleaned_data = super().clean()
+        tz = timezone.get_current_timezone()
+
+        # Obtener fechas y horas del formulario
+        fecha_inicio = cleaned_data.get('fecha_inicio')
+        hora_inicio = cleaned_data.get('hora_inicio')
+        fecha_fin = cleaned_data.get('fecha_fin')
+        hora_fin = cleaned_data.get('hora_fin')
+
+        # Combinar fecha y hora
+        if fecha_inicio and hora_inicio:
+            start_datetime = timezone.make_aware(
+                datetime.datetime.combine(fecha_inicio, hora_inicio),
+                tz
+            )
+            cleaned_data['start_datetime'] = start_datetime
+
+        if fecha_fin and hora_fin:
+            end_datetime = timezone.make_aware(
+                datetime.datetime.combine(fecha_fin, hora_fin),
+                tz
+            )
+            cleaned_data['end_datetime'] = end_datetime
+
+        # Validar que la fecha de fin sea posterior a la de inicio
+        if 'start_datetime' in cleaned_data and 'end_datetime' in cleaned_data:
+            if cleaned_data['end_datetime'] <= cleaned_data['start_datetime']:
+                self.add_error('fecha_fin', 'La fecha y hora de finalización debe ser posterior a la de inicio')
+                self.add_error('hora_fin', '')
+
+        # Procesar regla de recurrencia si existe
+        freq = cleaned_data.get('recurrence_frequency')
+        byday = cleaned_data.get('recurrence_byday')
+        until = cleaned_data.get('recurrence_until')
+        
+        if freq:
+            # Construir la regla de recurrencia
+            rrule_parts = [f"FREQ={freq}"]
+            
+            if freq == 'WEEKLY' and byday:
+                rrule_parts.append(f"BYDAY={','.join(byday)}")
+            
+            if until:
+                # Convertir la fecha de fin a UTC para la regla de recurrencia
+                dt_until = datetime.datetime.combine(until, datetime.time(23, 59, 59))
+                dt_until = timezone.make_aware(dt_until, tz).astimezone(datetime.timezone.utc)
+                rrule_parts.append(f"UNTIL={dt_until.strftime('%Y%m%dT%H%M%SZ')}")
+            
+            cleaned_data['recurrence_rule'] = ";".join(rrule_parts)
+        else:
+            cleaned_data['recurrence_rule'] = None
+
+        return cleaned_data
+        
+    def save(self, commit=True):
+        """Asegura que los campos generados en clean se guarden correctamente."""
+        instance = super().save(commit=False)
+        
+        # Asignar los valores de los campos calculados
+        if 'start_datetime' in self.cleaned_data:
+            instance.start_datetime = self.cleaned_data['start_datetime']
+        if 'end_datetime' in self.cleaned_data:
+            instance.end_datetime = self.cleaned_data['end_datetime']
+        if 'recurrence_rule' in self.cleaned_data:
+            instance.recurrence_rule = self.cleaned_data['recurrence_rule']
+        
+        if commit:
+            instance.save()
+        return instance
