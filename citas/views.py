@@ -175,8 +175,10 @@ def load_parroquias(request):
 
 def cargar_ubicaciones(request):
     tipo = request.GET.get('tipo')
-    estado_id = request.GET.get('estado_id')
-    municipio_id = request.GET.get('municipio_id')
+    # Aceptar tanto estado_id como parent_id para mayor compatibilidad
+    estado_id = request.GET.get('estado_id') or request.GET.get('parent_id')
+    # Aceptar municipio_id de los parámetros GET
+    municipio_id = request.GET.get('municipio_id') or request.GET.get('parent_id')
     
     try:
         if tipo not in ['ciudades', 'municipios', 'parroquias']:

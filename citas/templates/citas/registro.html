@@ -97,7 +97,7 @@ $(document).ready(function() {
         $targetCombo.prop('disabled', true).empty().append('<option value="">Cargando...</option>');
         
         // Construir la URL correcta
-       let url = `{% url 'citas:cargar_ubicaciones' %}?level=${level}&parent_id=${parentId}`;
+       let url = `{% url 'citas:cargar_ubicaciones' %}?tipo=${level}&parent_id=${parentId}`;
         
         $.ajax({
             url: url,
