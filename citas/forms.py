@@ -43,28 +43,47 @@ class RegistroPacienteForm(forms.ModelForm):
         queryset=Estado.objects.all(),
         label="Estado",
         empty_label="Seleccione un estado",
-        widget=forms.Select(attrs={'class': 'form-control', 'data-level': 'estados'}) 
+        widget=forms.Select(attrs={
+            'class': 'form-control', 
+            'data-level': 'estados',
+            'data-next-combo': 'id_ciudad'
+        }) 
     )
 
     ciudad = forms.ModelChoiceField(
         queryset=Ciudad.objects.none(),
         label="Ciudad",
         empty_label="Seleccione una ciudad",
-        widget=forms.Select(attrs={'class': 'form-control', 'data-level': 'ciudades', 'disabled': True})
+        required=False,
+        widget=forms.Select(attrs={
+            'class': 'form-control', 
+            'data-level': 'ciudades', 
+            'disabled': True,
+            'data-next-combo': 'id_municipio'
+        })
     )
 
     municipio = forms.ModelChoiceField(
         queryset=Municipio.objects.none(), 
         label="Municipio",
         empty_label="Seleccione un municipio",
-       widget=forms.Select(attrs={'class': 'form-control', 'data-level': 'municipios', 'disabled': True})
+        required=False,
+        widget=forms.Select(attrs={
+            'class': 'form-control', 
+            'data-level': 'municipios', 
+            'disabled': True,
+            'data-next-combo': 'id_parroquia'
+        })
     )
 
     parroquia = forms.ModelChoiceField(
         queryset=Parroquia.objects.none(), 
         label="Parroquia",
         required=False,
-        widget=forms.Select(attrs={'class': 'form-control', 'disabled': True})
+        widget=forms.Select(attrs={
+            'class': 'form-control', 
+            'disabled': True
+        })
     )
     
     # 4. Dirección Completa
@@ -96,28 +115,140 @@ class RegistroPacienteForm(forms.ModelForm):
         }
     
     
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        
+        # Inicializar los querysets de los campos dependientes
+        if self.is_bound:  # Si el formulario está siendo enviado
+            try:
+                # Obtener los IDs de los campos del formulario
+                estado_id = self.data.get('estado')
+                ciudad_id = self.data.get('ciudad')
+                municipio_id = self.data.get('municipio')
+                
+                # Configurar el queryset de ciudades si hay un estado seleccionado
+                if estado_id:
+                    estado_id = int(estado_id)
+                    self.fields['ciudad'].queryset = Ciudad.objects.filter(estado_id=estado_id).order_by('nombre')
+                    self.fields['ciudad'].widget.attrs['disabled'] = False
+                    
+                    # Configurar el queryset de municipios si hay un estado
+                    self.fields['municipio'].queryset = Municipio.objects.filter(estado_id=estado_id).order_by('nombre')
+                    self.fields['municipio'].widget.attrs['disabled'] = False
+                    
+                    # Configurar el queryset de parroquias si hay un municipio seleccionado
+                    if municipio_id:
+                        municipio_id = int(municipio_id)
+                        self.fields['parroquia'].queryset = Parroquia.objects.filter(municipio_id=municipio_id).order_by('nombre')
+                        self.fields['parroquia'].widget.attrs['disabled'] = False
+                        
+            except (ValueError, TypeError) as e:
+                print(f"Error al procesar los datos del formulario: {e}")
+                pass  # Ignorar errores de conversión
+                
+        elif self.instance and hasattr(self.instance, 'direccion'):
+            # Código para cuando se está editando un registro existente
+            direccion = self.instance.direccion
+            if direccion.estado:
+                self.fields['ciudad'].queryset = Ciudad.objects.filter(estado=direccion.estado).order_by('ciudad')
+                self.fields['ciudad'].widget.attrs['disabled'] = False
+                self.fields['municipio'].queryset = Municipio.objects.filter(estado=direccion.estado).order_by('municipio')
+                self.fields['municipio'].widget.attrs['disabled'] = False
+                if direccion.municipio:
+                    self.fields['parroquia'].queryset = Parroquia.objects.filter(municipio=direccion.municipio).order_by('parroquia')
+                    self.fields['parroquia'].widget.attrs['disabled'] = False
+
+    def clean(self):
+        cleaned_data = super().clean()
+        
+        # Solo validaciones básicas
+        if cleaned_data.get('municipio') and not cleaned_data.get('ciudad'):
+            self.add_error('ciudad', 'Debe seleccionar una ciudad si ha seleccionado un municipio')
+            
+        if cleaned_data.get('parroquia') and not cleaned_data.get('municipio'):
+            self.add_error('municipio', 'Debe seleccionar un municipio si ha seleccionado una parroquia')
+        
+        # No convertimos los IDs a objetos, Django se encargará de eso
+        
+        return cleaned_data
+    
     def save(self, commit=True):
         # 1. Guardar el Paciente (Modelo principal)
-        paciente = super().save(commit=commit)
-        
-        if commit:
-            # 2. Crear o actualizar el registro de DireccionPaciente (asumiendo que es una relación OneToOne)
-            DireccionPaciente.objects.update_or_create(
-                paciente=paciente,
-                defaults={
+        try:
+            # Asegurarse de que los campos requeridos estén presentes
+            required_fields = ['Nombres_Paciente', 'Apellidos_Paciente', 'CIDNI', 'Fecha_Nacimiento_Paciente']
+            for field in required_fields:
+                if field not in self.cleaned_data or not self.cleaned_data[field]:
+                    raise ValueError(f'El campo {field} es requerido')
+            
+            # Crear o actualizar el paciente
+            paciente = super().save(commit=False)
+            
+            # Asegurar que los campos requeridos del modelo Paciente estén configurados
+            if not hasattr(paciente, 'id_Paciente') or not paciente.id_Paciente:
+                # Es un nuevo paciente, establecer valores por defecto
+                paciente.Fecha_Registro = timezone.now()
+                paciente.Activo = True
+            
+            paciente.Ultima_Actualizacion = timezone.now()
+            
+            if commit:
+                # Guardar el paciente primero
+                paciente.save()
+                
+                # Preparar datos para la dirección
+                direccion_data = {
                     'celular': self.cleaned_data.get('celular'),
                     'correo': self.cleaned_data.get('correo'),
-                    'telefono': self.cleaned_data.get('telefono'),
-                    'direccion': self.cleaned_data.get('direccion'),
-                    'numero_casa': self.cleaned_data.get('numero_casa'),
-                    
+                    'telefono': self.cleaned_data.get('telefono', ''),
+                    'direccion': self.cleaned_data.get('direccion', ''),
+                    'numero_casa': self.cleaned_data.get('numero_casa', ''),
                     'estado': self.cleaned_data.get('estado'),
                     'ciudad': self.cleaned_data.get('ciudad'),
                     'municipio': self.cleaned_data.get('municipio'),
                     'parroquia': self.cleaned_data.get('parroquia'),
                 }
-            )
-        return paciente
+                
+                # Eliminar valores None para no sobrescribir con None los valores existentes
+                direccion_data = {k: v for k, v in direccion_data.items() if v is not None}
+                
+                try:
+                    # Usar update_or_create para manejar tanto creación como actualización
+                    direccion, created = DireccionPaciente.objects.update_or_create(
+                        paciente=paciente,
+                        defaults=direccion_data
+                    )
+                    
+                    # Si se creó una nueva dirección, asignarla al paciente
+                    if created:
+                        paciente.direccion = direccion
+                        if commit:
+                            paciente.save()
+                    
+                except Exception as e:
+                    # Si hay un error al guardar la dirección, registrar el error
+                    import logging
+                    logger = logging.getLogger(__name__)
+                    logger.error(f'Error al guardar la dirección del paciente: {str(e)}')
+                    
+                    # Si estamos en modo debug, relanzar la excepción
+                    if settings.DEBUG:
+                        raise
+            
+            return paciente
+            
+        except Exception as e:
+            # Registrar el error
+            import logging
+            logger = logging.getLogger(__name__)
+            logger.error(f'Error al guardar el paciente: {str(e)}')
+            
+            # Si estamos en modo debug, relanzar la excepción
+            if settings.DEBUG:
+                raise
+                
+            # En producción, devolver un mensaje de error más amigable
+            raise forms.ValidationError(f'Error al guardar el paciente: {str(e)}')
 
 class EspecialidadMedicaForm(forms.ModelForm):
     class Meta:

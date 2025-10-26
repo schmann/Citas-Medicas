@@ -10,6 +10,28 @@
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
     <link rel="stylesheet" href="{% static 'css/style.css' %}">
     <link rel="icon" href="{% static 'img/favicon.png' %}" type="image/png">
+    
+    <!-- FullCalendar CSS -->
+    <link href='https://cdn.jsdelivr.net/npm/fullcalendar@5.11.3/main.min.css' rel='stylesheet' />
+    <link href='https://cdn.jsdelivr.net/npm/@fullcalendar/bootstrap5@5.11.3/main.min.css' rel='stylesheet' />
+    <style>
+        /* Estilos para el calendario */
+        #calendario {
+            max-width: 1100px;
+            margin: 0 auto;
+        }
+        .fc-event {
+            cursor: pointer;
+        }
+        .fc-event-available {
+            background-color: #28a745;
+            border-color: #28a745;
+        }
+        .fc-event-unavailable {
+            background-color: #dc3545;
+            border-color: #dc3545;
+        }
+    </style>
 </head>
 
 <body class="d-flex flex-column min-vh-100"> 
@@ -80,5 +102,11 @@
     </footer>
     
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    <!-- FullCalendar JS -->
+    <script src='https://cdn.jsdelivr.net/npm/fullcalendar@5.11.3/main.min.js'></script>
+    <script src='https://cdn.jsdelivr.net/npm/fullcalendar@5.11.3/locales-all.min.js'></script>
+    <script src='https://cdn.jsdelivr.net/npm/@fullcalendar/bootstrap5@5.11.3/main.min.js'></script>
+    <script src="{% static 'js/main.js' %}"></script>
+    {% block extra_js %}{% endblock %}
 </body>
 </html>

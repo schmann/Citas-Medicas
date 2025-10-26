@@ -9,8 +9,16 @@
         <h2>{{ titulo }}</h2>
         <p>Por favor, ingrese sus datos personales para completar su registro.</p>
 
-        <form method="post" class="styled-form" id="form-paciente">
+        <form method="post" class="styled-form" action="{% url 'citas:registrar' %}" id="form-paciente">
             {% csrf_token %}
+            
+            {% if form.non_field_errors %}
+            <div class="alert alert-danger">
+                {% for error in form.non_field_errors %}
+                    {{ error }}
+                {% endfor %}
+            </div>
+            {% endif %}
 
             <div class="form-group-grid">
                 <!-- Campos personales -->
@@ -19,14 +27,20 @@
                         <div class="field-wrapper">
                             {{ field.label_tag }}
                             {{ field }}
-                            {% if field.errors %}<div class="error-message">{{ field.errors }}</div>{% endif %}
+                            {% if field.errors %}
+                                <div class="error-message">
+                                    {% for error in field.errors %}
+                                        {{ error }}
+                                    {% endfor %}
+                                </div>
+                            {% endif %}
                         </div>
                     {% endif %}
                 {% endfor %}
             </div>
 
             <div class="form-separator">
-                <h5 class="card-title">Dirección de Residencia</h5>
+                <h5 class="card-title">Datos de Contacto</h5>
             </div>
 
             <div class="form-group-grid">
@@ -34,76 +48,139 @@
                 <div class="field-wrapper">
                     {{ form.telefono.label_tag }}
                     {{ form.telefono }}
-                    {% if form.telefono.errors %}<div class="error-message">{{ form.telefono.errors }}</div>{% endif %}
+                    {% if form.telefono.errors %}
+                        <div class="error-message">
+                            {% for error in form.telefono.errors %}
+                                {{ error }}
+                            {% endfor %}
+                        </div>
+                    {% endif %}
                 </div>
                 <div class="field-wrapper">
                     {{ form.celular.label_tag }}
                     {{ form.celular }}
-                    {% if form.celular.errors %}<div class="error-message">{{ form.celular.errors }}</div>{% endif %}
+                    {% if form.celular.errors %}
+                        <div class="error-message">
+                            {% for error in form.celular.errors %}
+                                {{ error }}
+                            {% endfor %}
+                        </div>
+                    {% endif %}
                 </div>
                 <div class="field-wrapper full-width">
                     {{ form.correo.label_tag }}
                     {{ form.correo }}
-                    {% if form.correo.errors %}<div class="error-message">{{ form.correo.errors }}</div>{% endif %}
+                    {% if form.correo.errors %}
+                        <div class="error-message">
+                            {% for error in form.correo.errors %}
+                                {{ error }}
+                            {% endfor %}
+                        </div>
+                    {% endif %}
                 </div>
+            </div>
 
+            <div class="form-separator">
+                <h5 class="card-title">Dirección de Residencia</h5>
+            </div>
+
+            <div class="form-group-grid">
                 <!-- Ubicación -->
                 <div class="field-wrapper">
                     {{ form.estado.label_tag }}
                     {{ form.estado }}
+                    {% if form.estado.errors %}
+                        <div class="error-message">
+                            {% for error in form.estado.errors %}
+                                {{ error }}
+                            {% endfor %}
+                        </div>
+                    {% endif %}
                 </div>
                 <div class="field-wrapper">
                     {{ form.ciudad.label_tag }}
                     {{ form.ciudad }}
+                    {% if form.ciudad.errors %}
+                        <div class="error-message">
+                            {% for error in form.ciudad.errors %}
+                                {{ error }}
+                            {% endfor %}
+                        </div>
+                    {% endif %}
                 </div>
                 <div class="field-wrapper">
                     {{ form.municipio.label_tag }}
                     {{ form.municipio }}
+                    {% if form.municipio.errors %}
+                        <div class="error-message">
+                            {% for error in form.municipio.errors %}
+                                {{ error }}
+                            {% endfor %}
+                        </div>
+                    {% endif %}
                 </div>
                 <div class="field-wrapper">
                     {{ form.parroquia.label_tag }}
                     {{ form.parroquia }}
+                    {% if form.parroquia.errors %}
+                        <div class="error-message">
+                            {% for error in form.parroquia.errors %}
+                                {{ error }}
+                            {% endfor %}
+                        </div>
+                    {% endif %}
                 </div>
-
-                <!-- Dirección -->
                 <div class="field-wrapper full-width">
                     {{ form.direccion.label_tag }}
                     {{ form.direccion }}
-                    {% if form.direccion.errors %}<div class="error-message">{{ form.direccion.errors }}</div>{% endif %}
+                    {% if form.direccion.errors %}
+                        <div class="error-message">
+                            {% for error in form.direccion.errors %}
+                                {{ error }}
+                            {% endfor %}
+                        </div>
+                    {% endif %}
                 </div>
             </div>
 
-            <button type="submit" class="submit-button">Registrarse</button>
+            <div class="form-actions">
+                <button type="submit" class="submit-button">Registrarse</button>
+            </div>
         </form>
     </div>
 </section>
 
 <!-- Incluir jQuery -->
-
 <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
-<script src="https://unpkg.com/htmx.org@1.9.4"></script>
-<!-- Script para combos dependientes -->
+
+<!-- Script para combos dependientes y envío del formulario -->
 <script>
 $(document).ready(function() {
+    console.log('✅ Página cargada correctamente. Inicializando formulario...');
+
+    // Función para combos dependientes
     function loadDependentCombo(parentId, level, $targetCombo, $nextCombo) {
+        console.log(`🔄 Cargando ${level} para parentId: ${parentId}`);
+        
         if (!parentId) {
             $targetCombo.empty().append('<option value="">Seleccione una opción</option>').prop('disabled', true);
             if ($nextCombo) {
-                $nextCombo.empty().prop('disabled', true);
+                $nextCombo.empty().append('<option value="">Seleccione primero</option>').prop('disabled', true);
             }
             return;
         }
 
         $targetCombo.prop('disabled', true).empty().append('<option value="">Cargando...</option>');
         
-        // Construir la URL correcta
-       let url = `{% url 'citas:cargar_ubicaciones' %}?tipo=${level}&parent_id=${parentId}`;
+        let url = `{% url 'citas:cargar_ubicaciones' %}?tipo=${level}&parent_id=${parentId}`;
+        console.log(`📡 URL de consulta: ${url}`);
         
         $.ajax({
             url: url,
             type: 'GET',
             dataType: 'json',
             success: function(data) {
+                console.log(`✅ ${level} cargadas:`, data);
                 $targetCombo.empty().append('<option value="">Seleccione una opción</option>');
                 
                 if (data && data.length > 0) {
@@ -113,41 +190,189 @@ $(document).ready(function() {
                             text: value.nombre
                         }));
                     });
+                    // IMPORTANTE: Siempre habilitar el campo después de cargar
                     $targetCombo.prop('disabled', false);
+                    console.log(`✅ ${level} habilitado con ${data.length} opciones`);
                 } else {
                     $targetCombo.append('<option value="">No hay opciones disponibles</option>');
+                    // Pero lo mantenemos habilitado para que pueda ser enviado
+                    $targetCombo.prop('disabled', false);
+                    console.log(`⚠️ ${level} sin opciones pero habilitado`);
                 }
                 
                 // Limpiar combos siguientes
                 if ($nextCombo) {
-                    $nextCombo.empty().prop('disabled', true);
+                    $nextCombo.empty().append('<option value="">Seleccione primero</option>').prop('disabled', true);
                 }
             },
             error: function(xhr, status, error) {
-                console.error("Error al cargar datos: ", error);
+                console.error(`❌ Error al cargar ${level}:`, error);
                 $targetCombo.empty().append('<option value="">Error al cargar</option>');
+                // IMPORTANTE: Habilitar incluso en caso de error
+                $targetCombo.prop('disabled', false);
+                
+                if ($nextCombo) {
+                    $nextCombo.empty().prop('disabled', true);
+                }
             }
         });
     }
 
     // Eventos para los combos
     $("#id_estado").change(function() {
-        loadDependentCombo($(this).val(), 'ciudades', $("#id_ciudad"), $("#id_municipio"));
+        const estadoId = $(this).val();
+        console.log(`📍 Estado seleccionado: ${estadoId}`);
+        loadDependentCombo(estadoId, 'ciudades', $("#id_ciudad"), $("#id_municipio"));
     });
 
     $("#id_ciudad").change(function() {
-        // Si necesitas filtrar municipios por ciudad, cambia 'estados' por 'ciudades' y ajusta el parentId
-        loadDependentCombo($("#id_estado").val(), 'municipios', $("#id_municipio"), $("#id_parroquia"));
+        const estadoId = $("#id_estado").val();
+        const ciudadId = $(this).val();
+        console.log(`🏙️ Ciudad seleccionada: ${ciudadId}, Estado: ${estadoId}`);
+        loadDependentCombo(estadoId, 'municipios', $("#id_municipio"), $("#id_parroquia"));
     });
 
-   $("#id_municipio").change(function() {
-        loadDependentCombo(
-            $(this).val(),  // ID del municipio seleccionado
-            'parroquias',   // Nivel a cargar
-            $("#id_parroquia"),  // Combo objetivo
-            null  // No hay siguiente combo
-        );
+    $("#id_municipio").change(function() {
+        const municipioId = $(this).val();
+        console.log(`🏛️ Municipio seleccionado: ${municipioId}`);
+        loadDependentCombo(municipioId, 'parroquias', $("#id_parroquia"), null);
     });
+
+    // Función auxiliar para obtener etiquetas de campos
+    function getFieldLabel(fieldName) {
+        const fieldMap = {
+            'ciudad': 'Ciudad',
+            'municipio': 'Municipio', 
+            'parroquia': 'Parroquia',
+            'estado': 'Estado',
+            'telefono': 'Teléfono',
+            'celular': 'Celular',
+            'correo': 'Correo electrónico',
+            'direccion': 'Dirección',
+            'nombres': 'Nombres',
+            'apellidos': 'Apellidos',
+            'cedula': 'Cédula',
+            'fecha_nacimiento': 'Fecha de nacimiento'
+        };
+        return fieldMap[fieldName] || fieldName;
+    }
+    
+    // Función para manejar el envío del formulario
+    function manejarEnvio(e) {
+        e.preventDefault();
+        console.log('🔄 Iniciando envío del formulario...');
+        
+        const form = document.getElementById('form-paciente');
+        const csrfToken = document.querySelector('[name=csrfmiddlewaretoken]');
+        
+        if (!form) {
+            alert('❌ Error: No se pudo encontrar el formulario');
+            return false;
+        }
+        
+        if (!csrfToken || !csrfToken.value) {
+            alert('❌ Error: No se encontró el token de seguridad.');
+            return false;
+        }
+        
+        // ✅ FORZAR HABILITACIÓN DE TODOS LOS CAMPOS ANTES DE CREAR FormData
+        console.log('🔧 Forzando habilitación de todos los campos...');
+        const allSelects = form.querySelectorAll('select');
+        allSelects.forEach(select => {
+            const wasDisabled = select.disabled;
+            select.disabled = false;
+            console.log(`✅ Campo ${select.name} habilitado (estaba: ${wasDisabled})`);
+        });
+        
+        // ✅ CREAR FormData DESPUÉS de habilitar los campos
+        const formData = new FormData(form);
+        
+        // Mostrar datos para depuración
+        console.log('📦 Datos a enviar (FormData):');
+        for (let [key, value] of formData.entries()) {
+            console.log(`  ${key}: ${value}`);
+        }
+        
+        // Deshabilitar botón
+        const submitBtn = form.querySelector('button[type="submit"]');
+        if (submitBtn) {
+            submitBtn.disabled = true;
+            submitBtn.textContent = 'Guardando...';
+        }
+        
+        // ✅ ENVIAR COMO FormData TRADICIONAL
+        console.log('📤 Enviando datos al servidor como FormData...');
+        
+        fetch(form.action, {
+            method: 'POST',
+            body: formData,
+            headers: {
+                'X-Requested-With': 'XMLHttpRequest',
+                'X-CSRFToken': csrfToken.value
+            }
+        })
+        .then(response => {
+            console.log('📥 Respuesta recibida del servidor. Status:', response.status);
+            return response.json().then(data => {
+                console.log('📊 Datos de respuesta:', data);
+                
+                if (data.success) {
+                    alert('✅ ¡Registro exitoso! Redirigiendo...');
+                    if (data.redirect_url) {
+                        window.location.href = data.redirect_url;
+                    } else {
+                        window.location.reload();
+                    }
+                } else if (data.errors) {
+                    let errorMessage = '❌ Errores encontrados:\n\n';
+                    for (const [field, errors] of Object.entries(data.errors)) {
+                        const fieldLabel = getFieldLabel(field);
+                        errorMessage += `• ${fieldLabel}: ${errors.join(', ')}\n`;
+                    }
+                    alert(errorMessage);
+                    console.error('❌ ERRORES DE VALIDACIÓN:', data.errors);
+                } else {
+                    alert('❌ Error desconocido. Por favor, intente de nuevo.');
+                }
+            });
+        })
+        .catch(error => {
+            console.error('❌ Error al enviar el formulario:', error);
+            alert('❌ Error de conexión. Por favor, intente de nuevo.');
+        })
+        .finally(() => {
+            // Restaurar estado original de los campos
+            allSelects.forEach(select => {
+                if (!select.value) {
+                    select.disabled = true;
+                }
+            });
+            
+            // Rehabilitar botón
+            if (submitBtn) {
+                submitBtn.disabled = false;
+                submitBtn.textContent = 'Registrarse';
+            }
+        });
+        
+        return false;
+    }
+    
+    // Configurar el manejador de envío
+    const form = document.getElementById('form-paciente');
+    if (form) {
+        form.onsubmit = manejarEnvio;
+        console.log('✅ Formulario listo para usarse');
+    } else {
+        console.error('❌ No se pudo encontrar el formulario');
+    }
+
+    // Limpiar datos guardados al cargar
+    try {
+        localStorage.removeItem('form_paciente_data');
+    } catch (e) {
+        console.warn('No se pudo limpiar localStorage:', e);
+    }
 });
 </script>
 
@@ -213,5 +438,13 @@ $(document).ready(function() {
     textarea {
         min-height: 100px;
     }
+    
+    /* Estilos para campos deshabilitados */
+    select:disabled {
+        background-color: #f8f9fa;
+        color: #6c757d;
+        cursor: not-allowed;
+    }
 </style>
+
 {% endblock %}

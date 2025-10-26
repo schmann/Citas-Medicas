@@ -4,6 +4,7 @@ from django.views.decorators.csrf import csrf_exempt
 from django.views.decorators.http import require_http_methods
 from django.contrib.admin.views.decorators import staff_member_required
 from . import views
+from .views_crear_cita import crear_cita, disponibilidad_medico, guardar_cita as guardar_cita_view
 from .views_consultorios import (
     ConsultorioListView, ConsultorioCreateView, ConsultorioUpdateView,
     ConsultorioDetailView, ConsultorioDeleteView, toggle_consultorio_status
@@ -47,6 +48,9 @@ urlpatterns = [
     path('consultorios/eliminar/<int:pk>/', login_required(ConsultorioDeleteView.as_view()), name='consultorio_delete'),
     path('consultorios/toggle-status/<int:pk>/', login_required(toggle_consultorio_status), name='consultorio_toggle_status'),
 
+    # URL para el calendario
+    path('calendario/', views.calendario_nuevo_view, name='calendario'),
+    
     # URLs para la API de Citas
     path('api/actualizar-estado-cita/', csrf_exempt(views.actualizar_estado_cita), name='actualizar_estado_cita'),
     path('api/pacientes/', csrf_exempt(views.obtener_pacientes), name='obtener_pacientes'),
@@ -88,8 +92,18 @@ urlpatterns = [
     # API para obtener eventos (citas y disponibilidad)
     path('api/eventos/', csrf_exempt(views.obtener_eventos), name='obtener_eventos'),
     
-    # NUEVA RUTA API PARA GUARDAR CITAS (con validación estricta)
+    # API para guardar citas
     path('api/guardar-cita/', csrf_exempt(views.guardar_cita), name='guardar_cita'),
+    
+    # API para obtener médicos por especialidad
+    path('api/medicos/', csrf_exempt(views.medicos_por_especialidad), name='api_medicos'),
+    
+    # API para obtener disponibilidad de médico
+    path('api/disponibilidad-medico/', csrf_exempt(disponibilidad_medico), name='disponibilidad_medico'),
+    
+    # Vista para crear una nueva cita
+    path('crear-cita/', crear_cita, name='crear_cita'),
+    path('api/guardar-cita-nueva/', csrf_exempt(guardar_cita_view), name='guardar_cita_nueva'),
     
     # Ruta para editar una cita existente
     path('api/editar-cita/<int:cita_id>/', csrf_exempt(views.editar_cita), name='editar_cita'),

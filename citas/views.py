@@ -1,7 +1,13 @@
 from datetime import datetime, timedelta
 import json
+from django.utils import timezone
 
 from .forms import RegistroPacienteForm
+from .models import (
+    Ciudad, Municipio, Parroquia, Estado, Pais,
+    EspecialidadMedica, HorarioCita, MedicoEspecialidad,
+    Cita, CitasReservadas, Paciente, UsuarioMedico
+)
 from .models import (
     Ciudad, Municipio, Parroquia, Estado, Pais,
     EspecialidadMedica, HorarioCita, MedicoEspecialidad,
@@ -25,9 +31,8 @@ from dateutil import rrule
 import pytz
 from django.contrib.admin.views.decorators import staff_member_required
 from django.views.decorators.csrf import csrf_exempt
-from django.http import JsonResponse
-from django.db import transaction
-from django.core import serializers
+from django.http import JsonResponse, HttpResponse, HttpResponseRedirect
+from django.shortcuts import render, redirect
 from django.views.decorators.http import require_http_methods
 from rest_framework.decorators import api_view
 from rest_framework.response import Response
@@ -116,20 +121,136 @@ def calendario_nuevo_view(request):
     return render(request, 'citas/reservas/calendario_nuevo.html', context)
     
 def registrar_paciente(request):
-    if request.method == 'POST':
-        form = RegistroPacienteForm(request.POST)
-        if form.is_valid():
-            form.save()
-            return redirect('citas:lista_pacientes') # Ajusta el nombre de la URL según tu configuración
-    else:
-        form = RegistroPacienteForm()
+    print("\n=== INICIO DE LA SOLICITUD REGISTRAR_PACIENTE ===")
+    print(f"Método de la solicitud: {request.method}")
+    print(f"¿Es AJAX? {request.headers.get('X-Requested-With') == 'XMLHttpRequest'}")
     
-    return render(request, 'citas/registro.html', {
-        'form': form,
-        'titulo': 'Registro de Paciente'
-    })
-
-# -------------------------------------------------------------
+    if request.method == 'POST':
+        print("\n=== DATOS POST RECIBIDOS ===")
+        # Imprimir todos los datos POST para depuración
+        print("Datos POST:")
+        for key, value in request.POST.items():
+            print(f"  {key}: {value}")
+        
+        # Verificar si hay archivos en la solicitud
+        print("\n=== ARCHIVOS EN LA SOLICITUD ===")
+        print(f"Número de archivos: {len(request.FILES) if hasattr(request, 'FILES') else 0}")
+        
+        # Crear una copia mutable de request.POST
+        post_data = request.POST.copy()
+        
+        # ✅ SOLUCIÓN: CONVERTIR CAMPOS DE UBICACIÓN A ENTEROS
+        ubicacion_fields = ['pais', 'estado', 'ciudad', 'municipio', 'parroquia']
+        for field in ubicacion_fields:
+            if field in post_data:
+                print(f"Procesando campo {field}: {post_data[field]}")
+                if post_data[field]:
+                    try:
+                        # Convertir a entero
+                        post_data[field] = int(post_data[field])
+                        print(f"✅ Convertido {field} a entero: {post_data[field]}")
+                    except (ValueError, TypeError):
+                        print(f"❌ No se pudo convertir {field}, estableciendo a None")
+                        post_data[field] = None
+                else:
+                    post_data[field] = None
+                    print(f"⚠️ Campo {field} vacío, establecido a None")
+        
+        # Mostrar los datos procesados
+        print("\n=== DATOS PROCESADOS PARA EL FORMULARIO ===")
+        for key, value in post_data.items():
+            print(f"{key}: {value} (tipo: {type(value).__name__})")
+        
+        # Inicializar el formulario con los datos
+        form = RegistroPacienteForm(post_data, request.FILES if hasattr(request, 'FILES') else None)
+        
+        # Verificar si el formulario es válido
+        print(f"\n=== VALIDACIÓN DEL FORMULARIO ===")
+        is_valid = form.is_valid()
+        print(f"Formulario válido: {is_valid}")
+        
+        # Mostrar datos limpios si el formulario es válido
+        if is_valid:
+            print("\n=== DATOS LIMPIOS DEL FORMULARIO ===")
+            for field, value in form.cleaned_data.items():
+                print(f"{field}: {value}")
+        else:
+            print("\n=== ERRORES DE VALIDACIÓN ===")
+            for field, errors in form.errors.items():
+                field_label = form.fields[field].label if field in form.fields else field
+                print(f"- {field_label}: {', '.join(errors)}")
+        
+        if is_valid:
+            from django.db import transaction
+            from django.http import JsonResponse
+            from django.urls import reverse
+            
+            try:
+                with transaction.atomic():
+                    # Guardar el paciente (el formulario ya maneja la dirección)
+                    paciente = form.save(commit=True)  # commit=True para guardar también la dirección
+                    
+                    # No necesitamos asignar manualmente los campos de ubicación
+                    # ya que el método save() del formulario ya los está manejando
+                    print("\n=== DATOS DEL PACIENTE GUARDADOS ===")
+                    print(f"ID del paciente: {getattr(paciente, 'id_Paciente', 'N/A')}")
+                    
+                    # Verificar si se creó la dirección
+                    if hasattr(paciente, 'direccion'):
+                        print("\n=== DIRECCIÓN DEL PACIENTE ===")
+                        print(f"Dirección: {getattr(paciente.direccion, 'direccion', 'N/A')}")
+                        print(f"Estado: {getattr(paciente.direccion.estado, 'estado', 'N/A') if getattr(paciente.direccion, 'estado', None) else 'N/A'}")
+                        print(f"Ciudad: {getattr(paciente.direccion.ciudad, 'ciudad', 'N/A') if getattr(paciente.direccion, 'ciudad', None) else 'N/A'}")
+                        print(f"Municipio: {getattr(paciente.direccion.municipio, 'municipio', 'N/A') if getattr(paciente.direccion, 'municipio', None) else 'N/A'}")
+                        print(f"Parroquia: {getattr(paciente.direccion.parroquia, 'parroquia', 'N/A') if getattr(paciente.direccion, 'parroquia', None) else 'N/A'}")
+                    
+                    print(f"\n=== PACIENTE GUARDADO CON ÉXITO ===")
+                    print(f"ID del paciente: {getattr(paciente, 'id_Paciente', 'N/A')}")
+                    
+                    # Devolver respuesta JSON exitosa
+                    return JsonResponse({
+                        'success': True,
+                        'message': 'Paciente registrado exitosamente',
+                        'paciente_id': paciente.id_Paciente,
+                        'redirect_url': reverse('citas:crear_cita') + f'?paciente_id={paciente.id_Paciente}'
+                    })
+                    
+            except Exception as e:
+                import traceback
+                error_trace = traceback.format_exc()
+                print(f"\n=== ERROR AL GUARDAR EL PACIENTE ===")
+                print(f"Error: {str(e)}")
+                print("Traceback:")
+                print(error_trace)
+                
+                # Devolver error como JSON con más detalles para depuración
+                return JsonResponse({
+                    'success': False,
+                    'message': 'Error al guardar el paciente',
+                    'error': str(e),
+                    'error_type': type(e).__name__,
+                    'traceback': error_trace if settings.DEBUG else None
+                }, status=500, json_dumps_params={'ensure_ascii': False})
+        else:
+            # Si el formulario no es válido, devolver errores de validación
+            from django.http import JsonResponse
+            errors = {}
+            for field, field_errors in form.errors.items():
+                field_label = form.fields[field].label if field in form.fields else field
+                errors[field] = [str(error) for error in field_errors]
+            
+            return JsonResponse({
+                'success': False,
+                'message': 'Error de validación',
+                'errors': errors
+            }, status=400)
+    else:
+        # Si no es POST, mostrar el formulario vacío
+        form = RegistroPacienteForm()
+        return render(request, 'citas/registro.html', {
+            'form': form,
+            'titulo': 'Registro de Paciente'
+        })# -------------------------------------------------------------
 # VISTA AJAX PARA COMBOS DEPENDIENTES (CORREGIDA)
 # -------------------------------------------------------------
 
@@ -544,88 +665,406 @@ def obtener_medicos(request):
 @csrf_exempt
 def crear_cita(request):
     """
-    Vista para crear una nueva cita en la tabla citas_reservadas.
+    Vista para crear una nueva cita con visualización de disponibilidad del médico.
+    Similar al módulo de reserva de citas pero solo permite agregar nuevas citas.
     """
-    print("\n=== INICIO DE LA SOLICITUD CREAR_CITA ===")
-    print(f"Método de la solicitud: {request.method}")
-    print(f"Headers: {request.headers}")
-    print(f"Cuerpo de la solicitud (raw): {request.body}")
+    # Obtener todas las especialidades médicas
+    especialidades = EspecialidadMedica.objects.all().order_by('Espacialidad_Medica')
     
-    if request.method != 'POST':
-        error_msg = f'Método no permitido: {request.method}'
-        print(f"ERROR: {error_msg}")
-        return JsonResponse({'error': error_msg}, status=405)
+    # Obtener la lista de pacientes activos para el select
+    pacientes = Paciente.objects.filter(Activo=True).order_by('Apellidos_Paciente', 'Nombres_Paciente')
+    
+    # Obtener el ID del paciente si está en los parámetros GET
+    paciente_id = request.GET.get('paciente_id')
+    paciente = None
+    if paciente_id:
+        try:
+            paciente = Paciente.objects.get(id_Paciente=paciente_id)
+        except Paciente.DoesNotExist:
+            messages.warning(request, 'El paciente especificado no existe')
+    
+    # Obtener especialidad y médico si están en los parámetros
+    especialidad_id = request.GET.get('especialidad_id')
+    medico_id = request.GET.get('medico_id')
+    
+    # Inicializar variables para el contexto
+    medicos = UsuarioMedico.objects.none()
+    especialidad = None
+    medico = None
+    
+    # Si hay una especialidad seleccionada, obtener los médicos
+    if especialidad_id:
+        try:
+            especialidad = EspecialidadMedica.objects.get(id_Especialidad_Medica=especialidad_id)
+            medicos = UsuarioMedico.objects.filter(
+                medicoespecialidad__especialidad=especialidad,
+                activo=True
+            ).distinct().order_by('Apellidos_Medicos', 'Nombres_Medico')
+            
+            # Si hay un médico seleccionado, obtener sus datos
+            if medico_id:
+                try:
+                    medico = UsuarioMedico.objects.get(id_Medico=medico_id, activo=True)
+                except UsuarioMedico.DoesNotExist:
+                    messages.warning(request, 'El médico seleccionado no existe o no está activo')
+        except EspecialidadMedica.DoesNotExist:
+            messages.warning(request, 'La especialidad seleccionada no existe')
+    
+    # Verificar si es una petición AJAX para cargar médicos
+    if request.headers.get('X-Requested-With') == 'XMLHttpRequest':
+        print("Solicitud AJAX recibida para cargar médicos")
+        try:
+            # Obtener el ID de la especialidad de los parámetros GET
+            especialidad_id = request.GET.get('especialidad_id')
+            print(f"ID de especialidad recibido: {especialidad_id}")
+            
+            if not especialidad_id:
+                print("Error: No se especificó la especialidad")
+                return JsonResponse({
+                    'success': False,
+                    'error': 'No se especificó la especialidad'
+                }, status=400)
+                
+            try:
+                # Verificar que la especialidad existe
+                print(f"Buscando especialidad con ID: {especialidad_id}")
+                especialidad = EspecialidadMedica.objects.get(id_Especialidad_Medica=especialidad_id)
+                print(f"Especialidad encontrada: {especialidad}")
+            except EspecialidadMedica.DoesNotExist as e:
+                print(f"Error: La especialidad con ID {especialidad_id} no existe")
+                return JsonResponse({
+                    'success': False,
+                    'error': f'La especialidad con ID {especialidad_id} no existe'
+                }, status=404)
+            except Exception as e:
+                print(f"Error al buscar especialidad: {str(e)}")
+                raise
+            
+            try:
+                # Obtener médicos para la especialidad seleccionada
+                print(f"Buscando médicos para la especialidad: {especialidad_id}")
+                medicos = UsuarioMedico.objects.filter(
+                    especialidades__id_Especialidad_Medica=especialidad_id,
+                    activo=True
+                ).distinct().order_by('Apellidos_Medicos', 'Nombres_Medico')
+                
+                print(f"Médicos encontrados: {medicos.count()}")
+                
+                medicos_data = [{
+                    'id': str(medico.id_Medico),  # Asegurarse de que el ID sea string
+                    'text': f"{medico.Apellidos_Medicos}, {medico.Nombres_Medico}"
+                } for medico in medicos]
+                
+                print(f"Datos de médicos preparados: {medicos_data}")
+                
+                return JsonResponse({
+                    'success': True,
+                    'medicos': medicos_data
+                })
+                
+            except Exception as e:
+                print(f"Error al obtener médicos: {str(e)}")
+                raise
+            
+        except Exception as e:
+            import traceback
+            error_trace = traceback.format_exc()
+            print("="*50)
+            print("ERROR EN crear_cita (AJAX)")
+            print(f"Tipo de error: {type(e).__name__}")
+            print(f"Mensaje: {str(e)}")
+            print("Traceback completo:")
+            print(error_trace)
+            print("="*50)
+            
+            # Registrar el error en los logs del servidor
+            import logging
+            logger = logging.getLogger(__name__)
+            logger.error(f"Error en crear_cita (AJAX): {str(e)}\n{error_trace}")
+            
+            return JsonResponse({
+                'success': False,
+                'error': 'Error interno del servidor al cargar los médicos',
+                'debug': f"{type(e).__name__}: {str(e)}"
+            }, status=500)
+    
+    # Obtener horarios del médico si está seleccionado
+    horarios_disponibles = []
+    citas_reservadas = []
+    
+    if medico_id and especialidad_id:
+        try:
+            try:
+                # Obtener las citas ya reservadas para este médico y especialidad
+                hoy = timezone.now().date()
+                fecha_fin = hoy + timedelta(days=7)  # Próximos 7 días
+                
+                citas_reservadas = CitasReservadas.objects.filter(
+                    horario__medico_id=medico_id,
+                    horario__especialidad_id=especialidad_id,
+                    start_datetime__date__gte=hoy,
+                    start_datetime__date__lte=fecha_fin,
+                    estado__in=['pendiente', 'confirmada']  # Solo considerar citas activas
+                ).values_list('start_datetime', flat=True)
+                
+                # Convertir a conjunto para búsqueda más rápida
+                citas_reservadas = set([cita.strftime('%Y-%m-%d %H:%M') for cita in citas_reservadas])
+                
+                # Obtener los horarios activos del médico para la especialidad
+                horarios = HorarioCita.objects.filter(
+                    medico_id=medico_id,
+                    especialidad_id=especialidad_id,
+                    activo=True,
+                    start_datetime__isnull=False,
+                    end_datetime__isnull=False
+                ).select_related('turno')
+                
+                # Si hay horarios, procesarlos
+                if horarios.exists():
+                    # Usar un conjunto para evitar duplicados
+                    horas_unicas = set()
+                    horarios_disponibles = []
+                    
+                    for horario in horarios:
+                        # Si hay una regla de recurrencia, procesarla
+                        if horario.recurrence_rule:
+                            # Para simplificar, asumimos horarios fijos por ahora
+                            if horario.turno and horario.turno.hora_inicio and horario.turno.hora_fin:
+                                # Agregar horas en el rango del turno
+                                hora_actual = horario.turno.hora_inicio
+                                hora_fin = horario.turno.hora_fin
+                                while hora_actual < hora_fin:
+                                    horarios_disponibles.append(hora_actual.strftime('%H:%M'))
+                                    hora_actual = (datetime.combine(datetime.today(), hora_actual) + timedelta(minutes=30)).time()
+            
+                print(f"Horarios disponibles: {horarios_disponibles}")
+            
+            except Exception as e:
+                print(f"Error al obtener horarios: {str(e)}")
+                # En caso de error, usar un horario por defecto
+                horarios_disponibles = [
+                    '08:00', '08:30', '09:00', '09:30', '10:00', '10:30',
+                    '11:00', '11:30', '14:00', '14:30', '15:00', '15:30',
+                    '16:00', '16:30', '17:00'
+                ]
+        except Exception as e:
+            print(f"Error al obtener horarios: {str(e)}")
+            # En caso de error, usar un horario por defecto
+            horarios_disponibles = [
+                '08:00', '08:30', '09:00', '09:30', '10:00', '10:30',
+                '11:00', '11:30', '14:00', '14:30', '15:00', '15:30',
+                '16:00', '16:30', '17:00'
+            ]
+    
+    # Preparar el contexto para la plantilla
+    context = {
+        'especialidades': especialidades,
+        'medicos': medicos,
+        'paciente': paciente,
+        'pacientes': pacientes,  
+        'paciente_id': paciente.id_Paciente if paciente else '',
+        'especialidad_seleccionada': especialidad,
+        'medico_seleccionado': medico,
+        'fecha_actual': timezone.now().date(),
+        'horarios_disponibles': horarios_disponibles,
+        'citas_reservadas': citas_reservadas
+    }
+    
+    # Renderizar la plantilla con el contexto
+    return render(request, 'citas/crear_cita.html', context)
+
+@csrf_exempt
+def disponibilidad_medico(request):
+    """
+    API para obtener la disponibilidad de un médico en un rango de fechas.
+    """
+    if request.method != 'GET':
+        return JsonResponse({'success': False, 'error': 'Método no permitido'}, status=405)
     
     try:
-        # Imprimir el cuerpo de la solicitud para depuración
-        print("\n=== DATOS RECIBIDOS ===")
-        print("Cuerpo de la solicitud (raw):", request.body)
+        medico_id = request.GET.get('medico_id')
+        especialidad_id = request.GET.get('especialidad_id')
+        start_date_str = request.GET.get('start')
+        end_date_str = request.GET.get('end')
         
+        print(f"Parámetros recibidos - médico: {medico_id}, especialidad: {especialidad_id}, inicio: {start_date_str}, fin: {end_date_str}")
+        
+        # Validar parámetros requeridos
+        if not all([medico_id, especialidad_id, start_date_str, end_date_str]):
+            return JsonResponse(
+                {'success': False, 'error': 'Faltan parámetros requeridos: medico_id, especialidad_id, start, end'},
+                status=400
+            )
+        
+        # Convertir las fechas al formato correcto
         try:
-            data = json.loads(request.body)
-            print("Datos parseados:", json.dumps(data, indent=2, default=str))
-        except json.JSONDecodeError as e:
-            error_msg = f'Error al decodificar JSON: {str(e)}'
-            print(f"ERROR: {error_msg}")
-            return JsonResponse({'error': error_msg}, status=400)
+            start_date = datetime.strptime(start_date_str, '%Y-%m-%d').date()
+            end_date = datetime.strptime(end_date_str, '%Y-%m-%d').date()
+        except ValueError as e:
+            return JsonResponse(
+                {'success': False, 'error': f'Formato de fecha inválido. Use YYYY-MM-DD. Error: {str(e)}'},
+                status=400
+            )
         
-        # Validar datos requeridos
-        required_fields = ['paciente_id', 'medico_id', 'especialidad_id', 'fecha', 'hora', 'duracion']
-        missing_fields = [field for field in required_fields if field not in data]
+        print(f"Fechas convertidas - inicio: {start_date}, fin: {end_date}")
         
-        if missing_fields:
-            error_msg = f'Faltan campos requeridos: {missing_fields}'
-            print(f"ERROR: {error_msg}")
-            print("Campos recibidos:", list(data.keys()))
-            return JsonResponse({'error': error_msg, 'missing_fields': missing_fields}, status=400)
+        # Obtener los horarios del médico para la especialidad en el rango de fechas
+        horarios = HorarioCita.objects.filter(
+            medico_id=medico_id,
+            especialidad_id=especialidad_id,
+            activo=True,
+            start_datetime__date__lte=end_date,
+            end_datetime__date__gte=start_date
+        )
+        
+        print(f"Horarios encontrados: {horarios.count()}")
+        
+        # Si no hay horarios definidos para ese día
+        if not horarios.exists():
+            return JsonResponse({
+                'success': True,
+                'disponibilidad': [],
+                'mensaje': 'No hay horarios disponibles para la fecha seleccionada'
+            })
+        
+        # Obtener las citas ya reservadas en el rango de fechas
+        citas_reservadas = CitasReservadas.objects.filter(
+            horario__medico_id=medico_id,
+            horario__especialidad_id=especialidad_id,
+            start_datetime__date__lte=end_date,
+            end_datetime__date__gte=start_date,
+            estado__in=['pendiente', 'confirmada']
+        )
+        
+        print(f"Citas reservadas encontradas: {citas_reservadas.count()}")
+        
+        # Convertir las citas a un formato más manejable
+        citas_por_fecha_hora = {}
+        for cita in citas_reservadas:
+            fecha_str = cita.start_datetime.date().isoformat()
+            hora_str = cita.start_datetime.time().strftime('%H:%M')
             
-        print("\n=== VALIDACIÓN DE CAMPOS ===")
-        print("Todos los campos requeridos están presentes")
+            if fecha_str not in citas_por_fecha_hora:
+                citas_por_fecha_hora[fecha_str] = {}
+                
+            citas_por_fecha_hora[fecha_str][hora_str] = {
+                'inicio': cita.start_datetime.strftime('%H:%M'),
+                'fin': cita.end_datetime.strftime('%H:%M'),
+                'estado': cita.estado,
+                'paciente': f"{cita.paciente.Nombres_Paciente} {cita.paciente.Apellidos_Paciente}"
+            }
         
-        from datetime import datetime, timedelta
-        from django.utils import timezone
-        from .models import CitasReservadas, HorarioCita, Paciente, UsuarioMedico, EspecialidadMedica
+        # Generar la disponibilidad para cada día en el rango
+        disponibilidad = []
+        current_date = start_date
+        
+        while current_date <= end_date:
+            # Obtener el día de la semana (0=lunes, 6=domingo)
+            dia_semana = current_date.weekday()
+            fecha_str = current_date.isoformat()
+            
+            # Filtrar horarios para este día de la semana
+            horarios_dia = [h for h in horarios if h.dia_semana == dia_semana]
+            
+            for horario in horarios_dia:
+                hora_actual = horario.hora_inicio
+                
+                while hora_actual < horario.hora_fin:
+                    hora_fin = (datetime.combine(current_date, hora_actual) + timedelta(minutes=30)).time()
+                    if hora_fin > horario.hora_fin:
+                        hora_fin = horario.hora_fin
+                    
+                    hora_str = hora_actual.strftime('%H:%M')
+                    cita = citas_por_fecha_hora.get(fecha_str, {}).get(hora_str) if fecha_str in citas_por_fecha_hora else None
+                    
+                    disponibilidad.append({
+                        'fecha': fecha_str,
+                        'hora_inicio': hora_str,
+                        'hora_fin': hora_fin.strftime('%H:%M'),
+                        'disponible': cita is None,
+                        'cita': cita,
+                        'title': 'Disponible' if cita is None else 'Ocupado',
+                        'start': f"{fecha_str}T{hora_str}",
+                        'end': f"{fecha_str}T{hora_fin.strftime('%H:%M')}",
+                        'backgroundColor': '#28a745' if cita is None else '#dc3545',
+                        'borderColor': '#28a745' if cita is None else '#dc3545',
+                        'textColor': 'white',
+                        'extendedProps': {
+                            'disponible': cita is None
+                        }
+                    })
+                    
+                    hora_actual = hora_fin
+            
+            current_date += timedelta(days=1)
+        
+        # Agrupar la disponibilidad por fecha para facilitar el manejo en el frontend
+        disponibilidad_por_fecha = {}
+        for slot in disponibilidad:
+            fecha = slot['fecha']
+            if fecha not in disponibilidad_por_fecha:
+                disponibilidad_por_fecha[fecha] = []
+            disponibilidad_por_fecha[fecha].append(slot)
+        
+        print(f"Disponibilidad generada para {len(disponibilidad)} slots en {len(disponibilidad_por_fecha)} días")
+        
+        return JsonResponse({
+            'success': True,
+            'disponibilidad': disponibilidad_por_fecha,
+            'start_date': start_date_str,
+            'end_date': end_date_str,
+            'total_slots': len(disponibilidad),
+            'dias_con_disponibilidad': len(disponibilidad_por_fecha)
+        })
+        
+    except Exception as e:
+        import traceback
+        traceback.print_exc()
+        return JsonResponse({
+            'success': False,
+            'error': f'Error al obtener la disponibilidad: {str(e)}',
+            'traceback': traceback.format_exc()
+        }, status=500)
+        return JsonResponse({
+            'success': False,
+            'error': str(e)
+        }, status=500)
+@csrf_exempt
+def guardar_cita(request):
+    """
+    Vista para guardar una nueva cita.
+    """
+    if request.method != 'POST':
+        return JsonResponse({'error': 'Método no permitido', 'success': False}, status=405)
+    
+    try:
+        # Obtener datos del formulario
+        data = json.loads(request.body)
+        print("Datos recibidos:", json.dumps(data, indent=2, default=str))
+        
+        # Validar campos requeridos
+        required_fields = ['paciente_id', 'medico_id', 'especialidad_id', 'fecha', 'hora']
+        for field in required_fields:
+            if field not in data or not data[field]:
+                return JsonResponse({
+                    'error': f'El campo {field} es requerido',
+                    'success': False
+                }, status=400)
         
         # Obtener los objetos relacionados
         try:
-            print("\n=== BUSCANDO REGISTROS EN LA BASE DE DATOS ===")
-            print(f"Buscando paciente con ID: {data['paciente_id']}")
             paciente = Paciente.objects.get(id_Paciente=data['paciente_id'])
-            print(f"Paciente encontrado: {paciente.Nombres_Paciente} {paciente.Apellidos_Paciente}")
-            
-            print(f"\nBuscando médico con ID: {data['medico_id']}")
             medico = UsuarioMedico.objects.get(id_Medico=data['medico_id'])
-            print(f"Médico encontrado: {medico.Nombres_Medico} {medico.Apellidos_Medicos}")
-            
-            print(f"\nBuscando especialidad con ID: {data['especialidad_id']}")
             especialidad = EspecialidadMedica.objects.get(id_Especialidad_Medica=data['especialidad_id'])
-            print(f"Especialidad encontrada: {especialidad.Espacialidad_Medica}")
-            
-        except Paciente.DoesNotExist:
-            error_msg = f'No se encontró el paciente con ID: {data["paciente_id"]}'
-            print(f"ERROR: {error_msg}")
-            return JsonResponse({'error': error_msg}, status=404)
-        except UsuarioMedico.DoesNotExist:
-            error_msg = f'No se encontró el médico con ID: {data["medico_id"]}'
-            print(f"ERROR: {error_msg}")
-            return JsonResponse({'error': error_msg}, status=404)
-        except EspecialidadMedica.DoesNotExist:
-            error_msg = f'No se encontró la especialidad con ID: {data["especialidad_id"]}'
-            print(f"ERROR: {error_msg}")
-            return JsonResponse({'error': error_msg}, status=404)
-        except Exception as e:
-            error_msg = f'Error al obtener datos: {str(e)}'
-            print(f"ERROR: {error_msg}")
-            return JsonResponse({'error': error_msg}, status=400)
+        except (Paciente.DoesNotExist, UsuarioMedico.DoesNotExist, EspecialidadMedica.DoesNotExist) as e:
+            return JsonResponse({
+                'error': f'Error al obtener los datos: {str(e)}',
+                'success': False
+            }, status=400)
         
-        # Convertir la fecha y hora de string a objeto datetime
+        # Procesar fecha y hora
         try:
-            print("\n=== PROCESANDO FECHA Y HORA ===")
-            print(f"Fecha recibida: {data['fecha']}")
-            print(f"Hora recibida: {data['hora']}")
-            print(f"Duración recibida: {data['duracion']} minutos")
-            
-            # Combinar fecha y hora
+            duracion = int(data.get('duracion', 30))
             fecha_hora_str = f"{data['fecha']} {data['hora']}"
             formatos_fecha = [
                 '%Y-%m-%d %H:%M:%S',
@@ -649,7 +1088,6 @@ def crear_cita(request):
             if timezone.is_naive(fecha_hora):
                 fecha_hora = timezone.make_aware(fecha_hora)
             
-            duracion = int(data['duracion'])
             fecha_hora_fin = fecha_hora + timedelta(minutes=duracion)
             
             print(f"Fecha/hora convertida: {fecha_hora}")
@@ -659,37 +1097,29 @@ def crear_cita(request):
         except ValueError as e:
             error_msg = f'Formato de fecha o duración inválido: {str(e)}. Formato esperado: YYYY-MM-DD HH:MM'
             print(f"ERROR: {error_msg}")
-            return JsonResponse({'error': error_msg}, status=400)
-        except TypeError as e:
-            error_msg = f'Tipo de dato inválido: {str(e)}'
-            print(f"ERROR: {error_msg}")
-            return JsonResponse({'error': error_msg}, status=400)
-        except Exception as e:
-            error_msg = f'Error al procesar la fecha: {str(e)}'
-            print(f"ERROR: {error_msg}")
-            import traceback
-            print(traceback.format_exc())
-            return JsonResponse({'error': error_msg}, status=400)
+            return JsonResponse({
+                'error': error_msg,
+                'success': False
+            }, status=400)
         
-        # Verificar si ya existe una cita en el mismo horario
-        print("\n=== VERIFICANDO DISPONIBILIDAD ===")
+        # Verificar disponibilidad del médico
         try:
-            # Verificar si hay citas que se solapen con el horario solicitado
-            # Usamos horario__medico ya que horario es una relación con la tabla horarios_citas
             cita_existente = CitasReservadas.objects.filter(
-                horario__medico=medico,  # Accedemos al médico a través de la relación horario
+                horario__medico=medico,
                 start_datetime__lt=fecha_hora_fin,
                 end_datetime__gt=fecha_hora,
                 estado__in=['pendiente', 'confirmada']
             ).exists()
             
             if cita_existente:
-                error_msg = 'Ya existe una cita programada en el horario seleccionado.'
+                error_msg = 'El médico ya tiene una cita programada en el horario seleccionado.'
                 print(f"ERROR: {error_msg}")
-                return JsonResponse({'error': error_msg}, status=400)
+                return JsonResponse({
+                    'error': error_msg,
+                    'success': False
+                }, status=400)
             
             # Buscar un horario existente o crear uno temporal
-            # Necesitamos un horario_id para la relación foránea
             horario = HorarioCita.objects.filter(
                 medico=medico,
                 especialidad=especialidad,
@@ -697,73 +1127,52 @@ def crear_cita(request):
             ).first()
             
             if not horario:
-                # Si no existe un horario, creamos uno temporal
-                horario = HorarioCita(
+                # Si no hay un horario existente, crear uno temporal
+                horario = HorarioCita.objects.create(
                     medico=medico,
                     especialidad=especialidad,
-                    start_datetime=fecha_hora,
-                    end_datetime=fecha_hora_fin,
-                    activo=True
+                    dia_semana=fecha_hora.weekday(),
+                    hora_inicio=fecha_hora.time(),
+                    hora_fin=(fecha_hora + timedelta(minutes=duracion)).time(),
+                    activo=True,
+                    domicilio=data.get('domicilio', False),
+                    descripcion='Cita única programada manualmente'
                 )
-                horario.save()
-                print(f"✅ Horario temporal creado: {horario.id}")
+                print(f"Creado nuevo horario temporal con ID: {horario.id}")
+            else:
+                print(f"Usando horario existente con ID: {horario.id}")
             
-            # Crear la cita en citas_reservadas
-            print("\n=== CREANDO CITA ===")
+            # Crear la cita reservada
             cita = CitasReservadas(
-                horario=horario,  # Asignamos el horario encontrado o creado
+                horario=horario,
                 paciente=paciente,
                 start_datetime=fecha_hora,
                 end_datetime=fecha_hora_fin,
                 estado='pendiente',
-                nota=data.get('notas', ''),
-                costo=float(data.get('costo', 0.00)) if data.get('costo') else 0.00
+                nota=data.get('nota', ''),
+                costo=data.get('costo')
             )
             cita.save()
-            print(f"✅ Cita creada exitosamente con ID: {cita.id}")
             
-            # Devolver respuesta exitosa
+            print(f"\n=== CITA CREADA CON ÉXITO ===")
+            print(f"ID de la cita: {cita.id}")
+            print(f"Paciente: {paciente.Nombres_Paciente} {paciente.Apellidos_Paciente}")
+            print(f"Médico: {medico.Nombres_Medico} {medico.Apellidos_Medicos}")
+            print(f"Especialidad: {especialidad.Espacialidad_Medica}")
+            print(f"Fecha/Hora: {fecha_hora}")
+            print(f"Duración: {duracion} minutos")
+            print(f"Nota: {data.get('nota', 'Ninguna')}")
+            
             return JsonResponse({
                 'success': True,
+                'message': 'Cita creada exitosamente',
                 'cita_id': cita.id,
-                'mensaje': 'Cita creada exitosamente',
                 'fecha': fecha_hora.strftime('%Y-%m-%d'),
                 'hora': fecha_hora.strftime('%H:%M'),
+                'duracion': duracion,
                 'medico': f"{medico.Nombres_Medico} {medico.Apellidos_Medicos}",
                 'especialidad': especialidad.Espacialidad_Medica
             })
-                
-        except Exception as e:
-            error_msg = f'Error al procesar la solicitud: {str(e)}'
-            print(f"ERROR: {error_msg}")
-            import traceback
-            print(traceback.format_exc())
-            return JsonResponse({'error': error_msg}, status=500)
-            
-            try:
-                cita = CitasReservadas.objects.create(**cita_data)
-                
-                print(f"Cita creada exitosamente - ID: {cita.id}")
-                print(f"Paciente: {paciente.Nombres_Paciente} {paciente.Apellidos_Paciente}")
-                print(f"Médico: {medico.Nombres_Medico} {medico.Apellidos_Medicos}")
-                print(f"Especialidad: {especialidad.Espacialidad_Medica}")
-                print(f"Fecha/Hora: {fecha_hora} - {fecha_hora_fin}")
-                
-                # Retornar respuesta de éxito
-                return JsonResponse({
-                    'success': True,
-                    'message': 'Cita creada exitosamente',
-                    'cita_id': cita.id
-                })
-                
-            except Exception as e:
-                error_msg = f'Error al guardar la cita en la base de datos: {str(e)}'
-                print(f"ERROR: {error_msg}")
-                print(f"Tipo de error: {type(e).__name__}")
-                if hasattr(e, '__traceback__'):
-                    import traceback
-                    print("Traceback:", ''.join(traceback.format_tb(e.__traceback__)))
-                return JsonResponse({'error': error_msg}, status=500)
             
         except Exception as e:
             import traceback
@@ -773,16 +1182,11 @@ def crear_cita(request):
             print(error_msg)
             print("\nTraza de error:", error_trace)
             
-            response_data = {
+            return JsonResponse({
                 'error': 'Error al crear la cita',
                 'details': str(e),
-                'trace': error_trace if settings.DEBUG else None
-            }
-            
-            print("\n=== RESPUESTA DE ERROR ===")
-            print(json.dumps(response_data, indent=2, default=str))
-            
-            return JsonResponse(response_data, status=500)
+                'success': False
+            }, status=500)
             
     except Exception as e:
         import traceback
@@ -2062,4 +2466,157 @@ def actualizar_estado_cita(request):
             'mensaje': f'Error interno del servidor: {str(e)}',
             'tipo_error': type(e).__name__,
             'traceback': error_trace
+        }, status=500)
+
+# API para obtener médicos por especialidad
+@csrf_exempt
+@require_http_methods(["GET"])
+def medicos_por_especialidad(request):
+    """
+    API para obtener la lista de médicos por especialidad
+    """
+    especialidad_id = request.GET.get('especialidad_id')
+    
+    if not especialidad_id:
+        return JsonResponse({'error': 'Se requiere el parámetro especialidad_id'}, status=400)
+    
+    try:
+        # Obtener los médicos que tienen la especialidad seleccionada
+        medicos = UsuarioMedico.objects.filter(
+            especialidades__id_Especialidad_Medica=especialidad_id,
+            activo=True
+        ).distinct()
+        
+        # Formatear la respuesta
+        medicos_data = [{
+            'id_Medico': medico.id_Medico,
+            'Nombres_Medico': medico.Nombres_Medico,
+            'Apellidos_Medicos': medico.Apellidos_Medicos,
+            'especialidades': [{
+                'id': esp.id_Especialidad_Medica,
+                'nombre': esp.Espacialidad_Medica
+            } for esp in medico.especialidades.all()]
+        } for medico in medicos]
+        
+        return JsonResponse({
+            'success': True,
+            'medicos': medicos_data
+        })
+        
+    except Exception as e:
+        return JsonResponse({
+            'success': False,
+            'error': str(e)
+        }, status=500)
+
+# API para obtener la disponibilidad de un médico
+@csrf_exempt
+@require_http_methods(["GET"])
+def disponibilidad_medico(request):
+    """
+    API para obtener la disponibilidad de un médico en un rango de fechas
+    """
+    medico_id = request.GET.get('medico_id')
+    start_str = request.GET.get('start')
+    end_str = request.GET.get('end')
+    
+    if not medico_id or not start_str or not end_str:
+        return JsonResponse({
+            'success': False,
+            'error': 'Se requieren los parámetros medico_id, start y end'
+        }, status=400)
+    
+    try:
+        # Convertir las fechas de string a objetos datetime
+        start_date = timezone.make_aware(datetime.strptime(start_str, '%Y-%m-%dT%H:%M:%S%z'))
+        end_date = timezone.make_aware(datetime.strptime(end_str, '%Y-%m-%dT%H:%M:%S%z'))
+        
+        # Obtener el médico
+        try:
+            medico = UsuarioMedico.objects.get(id_Medico=medico_id, activo=True)
+        except UsuarioMedico.DoesNotExist:
+            return JsonResponse({
+                'success': False,
+                'error': 'Médico no encontrado o inactivo'
+            }, status=404)
+        
+        # Obtener los horarios del médico
+        horarios = HorarioCita.objects.filter(
+            medico=medico,
+            activo=True,
+            dia_semana__in=[start_date.weekday() for start_date in [start_date + timedelta(days=x) for x in range((end_date - start_date).days + 1)]]
+        )
+        
+        # Obtener las citas ya reservadas
+        citas_reservadas = CitasReservadas.objects.filter(
+            horario__medico=medico,
+            start_datetime__lt=end_date,
+            end_datetime__gt=start_date,
+            estado__in=['pendiente', 'confirmada']
+        )
+        
+        # Generar slots de disponibilidad
+        disponibilidad = []
+        current_date = start_date
+        
+        while current_date < end_date:
+            # Verificar si es un día laborable del médico
+            dia_semana = current_date.weekday()
+            horarios_dia = [h for h in horarios if h.dia_semana == dia_semana]
+            
+            for horario in horarios_dia:
+                # Calcular la hora de inicio y fin para este día
+                hora_inicio = current_date.replace(
+                    hour=horario.hora_inicio.hour,
+                    minute=horario.hora_inicio.minute,
+                    second=0,
+                    microsecond=0
+                )
+                
+                hora_fin = current_date.replace(
+                    hour=horario.hora_fin.hour,
+                    minute=horario.hora_fin.minute,
+                    second=0,
+                    microsecond=0
+                )
+                
+                # Generar slots de 30 minutos
+                slot_inicio = hora_inicio
+                while slot_inicio + timedelta(minutes=30) <= hora_fin:
+                    slot_fin = slot_inicio + timedelta(minutes=30)
+                    
+                    # Verificar si el slot está disponible (no hay citas en ese horario)
+                    disponible = not any(
+                        not (cita.end_datetime <= slot_inicio or cita.start_datetime >= slot_fin)
+                        for cita in citas_reservadas
+                    )
+                    
+                    # Solo agregar slots futuros
+                    if slot_inicio > timezone.now():
+                        disponibilidad.append({
+                            'title': 'Disponible' if disponible else 'No disponible',
+                            'start': slot_inicio.isoformat(),
+                            'end': slot_fin.isoformat(),
+                            'disponible': disponible,
+                            'medico_id': medico.id_Medico,
+                            'backgroundColor': '#28a745' if disponible else '#dc3545',
+                            'borderColor': '#28a745' if disponible else '#dc3545',
+                            'textColor': 'white'
+                        })
+                    
+                    slot_inicio = slot_fin
+            
+            current_date += timedelta(days=1)
+        
+        return JsonResponse({
+            'success': True,
+            'disponibilidad': disponibilidad
+        })
+        
+    except Exception as e:
+        import traceback
+        return JsonResponse({
+            'success': False,
+            'error': str(e),
+            'trace': traceback.format_exc()
         }, status=500)
