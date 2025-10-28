@@ -9,7 +9,7 @@
         <h2>{{ titulo }}</h2>
         <p>Por favor, ingrese sus datos personales para completar su registro.</p>
 
-        <form method="post" class="styled-form" action="{% url 'citas:registrar' %}" id="form-paciente">
+        <form method="post" class="styled-form" action="{% url 'citas:registrar_paciente' %}" id="form-paciente">
             {% csrf_token %}
             
             {% if form.non_field_errors %}

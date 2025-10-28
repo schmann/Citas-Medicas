@@ -1,0 +1,153 @@
+{% extends "web/base.html" %}
+{% load static %}
+
+{% block title %}Reservar Cita{% endblock %}
+
+{% block extra_css %}
+<link href='https://cdn.jsdelivr.net/npm/fullcalendar@5.11.5/main.min.css' rel='stylesheet' />
+<link href='https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/css/select2.min.css' rel='stylesheet' />
+<link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+<link href="{% static 'citas/css/cita_web/styles.css' %}" rel="stylesheet">
+{% endblock %}
+
+{% block content %}
+<div class="container-fluid py-4">
+    <div class="row">
+        <!-- Columna del formulario -->
+        <div class="col-lg-4">
+            <div class="card shadow-sm h-100">
+                <div class="card-header py-3">
+                    <h6 class="m-0 font-weight-bold text-primary">Datos de la Cita</h6>
+                </div>
+                <div class="card-body">
+                    <div id="alerta-container"></div>
+                    
+                    <form id="form-cita" method="post" action="/citas/api/guardar-cita/">
+                    {% csrf_token %}
+                    
+                    {% if paciente_seleccionado %}
+                    <div class="form-group mb-4">
+                        <label class="form-label fw-bold">Paciente Seleccionado:</label>
+                        <div class="p-2 bg-light rounded">
+                            {{ paciente_seleccionado.Nombres_Paciente }} {{ paciente_seleccionado.Apellidos_Paciente }}
+                            <span class="text-muted">(ID: {{ paciente_seleccionado.id_Paciente }})</span>
+                        </div>
+                        <input type="hidden" name="paciente_id" value="{{ paciente_seleccionado.id_Paciente }}">
+                    </div>
+                    {% else %}
+                    <div class="alert alert-warning mb-4">
+                        <i class="fas fa-exclamation-triangle me-2"></i>Debe seleccionar un paciente para continuar.
+                    </div>
+                    {% endif %}
+
+                    <div class="form-group mb-4">
+                        <label for="especialidad_id" class="form-label fw-bold">Especialidad Médica:</label>
+                        <select class="form-control select2" id="especialidad_id" name="especialidad_id">
+                            <option value="">Seleccione una especialidad</option>
+                            {% for esp in especialidades %}
+                            <option value="{{ esp.id_Especialidad_Medica }}">{{ esp.Espacialidad_Medica }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                    
+                    <div class="form-group mb-4">
+                        <label for="medico_id" class="form-label fw-bold">Médico:</label>
+                        <select class="form-control select2" id="medico_id" name="medico_id" disabled>
+                            <option value="">Seleccione un médico</option>
+                        </select>
+                    </div>
+
+                    <div class="form-group mb-4">
+                        <label for="fecha" class="form-label fw-bold">Fecha Seleccionada:</label>
+                        <div class="input-group">
+                            <input type="text" class="form-control" id="fecha" name="fecha" readonly required>
+                            <span class="input-group-text bg-white"><i class="fas fa-calendar-alt text-primary"></i></span>
+                        </div>
+                    </div>
+                    
+                    <div class="form-group mb-4">
+                        <label for="hora" class="form-label fw-bold">Hora Seleccionada:</label>
+                        <div class="input-group">
+                            <input type="text" class="form-control" id="hora" name="hora" readonly required>
+                            <span class="input-group-text bg-white"><i class="fas fa-clock text-primary"></i></span>
+                        </div>
+                    </div>
+                    
+                    <div class="form-group mb-4">
+                        <label for="notas" class="form-label fw-bold">Notas Adicionales <span class="text-muted">(Opcional)</span>:</label>
+                        <textarea class="form-control" id="notas" name="notas" rows="3" 
+                                  placeholder="Escriba aquí cualquier observación o detalle adicional"
+                                  style="resize: vertical;"></textarea>
+                    </div>
+                    
+                    <div class="d-grid gap-3 mt-4">
+                        <button type="submit" class="btn btn-primary btn-lg py-2" id="btn-reservar" disabled>
+                            <i class="fas fa-calendar-check me-2"></i>Reservar Cita
+                        </button>
+                        <button type="button" class="btn btn-outline-secondary py-2" id="btn-cancelar" onclick="cancelarSeleccion()" disabled>
+                            <i class="fas fa-times me-2"></i>Cancelar Selección
+                        </button>
+                    </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Columna del calendario -->
+        <div class="col-lg-8">
+            <div class="card shadow-sm h-100 d-flex flex-column">
+                <div class="card-header py-3 d-flex justify-content-between align-items-center">
+                    <h6 class="m-0 font-weight-bold text-primary">Disponibilidad del Médico</h6>
+                    <div class="btn-group" role="group">
+                        <button type="button" class="btn btn-sm btn-outline-primary" id="btn-vista-mes">
+                            <i class="fas fa-calendar-alt me-1"></i> Mes
+                        </button>
+                        <button type="button" class="btn btn-sm btn-outline-primary active" id="btn-vista-semana">
+                            <i class="fas fa-calendar-week me-1"></i> Semana
+                        </button>
+                        <button type="button" class="btn btn-sm btn-outline-primary" id="btn-vista-dia">
+                            <i class="far fa-calendar-alt me-1"></i> Día
+                        </button>
+                    </div>
+                </div>
+                <div class="card-body p-0 d-flex flex-column" style="min-height: 0;">
+                    <div id="calendario" style="height: 700px; min-height: 500px; width: 100%;"></div>
+                </div>
+                <div class="card-footer bg-white border-top-0 pt-0">
+                    <div class="d-flex justify-content-between align-items-center">
+                        <div class="d-flex align-items-center">
+                            <span class="badge bg-primary me-2" style="width: 16px; height: 16px;"></span>
+                            <small class="text-muted">Horario disponible</small>
+                        </div>
+                        <div class="d-flex align-items-center">
+                            <span class="badge bg-success me-2" style="width: 16px; height: 16px;"></span>
+                            <small class="text-muted">Cita seleccionada</small>
+                        </div>
+                        <div class="d-flex align-items-center">
+                            <span class="badge bg-secondary me-2" style="width: 16px; height: 16px;"></span>
+                            <small class="text-muted">No disponible</small>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<!-- jQuery y dependencias -->
+<script src="https://cdn.jsdelivr.net/npm/jquery@3.6.0/dist/jquery.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/js/select2.min.js"></script>
+
+<!-- FullCalendar 6.1.9 -->
+<link href='https://cdn.jsdelivr.net/npm/fullcalendar@6.1.9/main.min.css' rel='stylesheet' />
+<script src='https://cdn.jsdelivr.net/npm/fullcalendar@6.1.9/index.global.min.js'></script>
+<script src='https://cdn.jsdelivr.net/npm/fullcalendar@6.1.9/locales/es.global.min.js'></script>
+
+<!-- Moment.js para manejo de fechas -->
+<script src="https://cdnjs.cloudflare.com/ajax/libs/moment.js/2.29.1/moment.min.js"></script>
+
+<!-- Scripts personalizados -->
+<script src="{% static 'citas/js/cita_web/scripts.js' %}"></script>
+{% endblock %}

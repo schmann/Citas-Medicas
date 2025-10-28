@@ -247,7 +247,7 @@ def registrar_paciente(request):
     else:
         # Si no es POST, mostrar el formulario vacío
         form = RegistroPacienteForm()
-        return render(request, 'citas/registro.html', {
+        return render(request, 'citas/cita_web/registro.html', {
             'form': form,
             'titulo': 'Registro de Paciente'
         })# -------------------------------------------------------------
@@ -497,75 +497,82 @@ class MedicoEspecialidadDeleteView(DeleteView):
     paginate_by = 10
 
 def get_especialidades_medico(request, medico_id):
+    """
+    Obtiene todas las especialidades asignadas a un médico específico.
+    Retorna tanto especialidades activas como inactivas para que el frontend filtre.
+    """
+    print(f"[DEBUG] get_especialidades_medico - Iniciando para médico_id: {medico_id}")
+    
     try:
-        # Obtener todas las especialidades del médico, incluyendo las inactivas
-        especialidades = MedicoEspecialidad.objects.filter(
-            medico_id=medico_id
-        ).select_related('especialidad').order_by('especialidad__Espacialidad_Medica').values(
-            'especialidad__id_Especialidad_Medica', 
-            'especialidad__Espacialidad_Medica',
-            'activo',
-            'especialidad_id'
-        ).distinct('especialidad_id')  # Asegurar que no haya duplicados por especialidad
+        # Verificar que el médico existe
+        from django.shortcuts import get_object_or_404
+        from .models import UsuarioMedico
         
-        if not especialidades.exists():
+        # Solo verificar que el médico existe, pero no necesitamos el objeto
+        if not UsuarioMedico.objects.filter(id_Medico=medico_id).exists():
+            print(f"[DEBUG] Médico con ID {medico_id} no encontrado")
             return JsonResponse({
+                'success': False,
+                'error': f'Médico con ID {medico_id} no encontrado',
+                'especialidades': []
+            }, status=404)
+            
+        # Obtener todas las especialidades del médico con la relación
+        from django.db.models import Q
+        especialidades_medico = MedicoEspecialidad.objects.filter(
+            medico_id=medico_id
+        ).select_related('especialidad').order_by('especialidad__Espacialidad_Medica')
+        
+        if not especialidades_medico.exists():
+            print(f"[DEBUG] No se encontraron especialidades para el médico {medico_id}")
+            return JsonResponse({
+                'success': True,
                 'especialidades': [],
-                'mensajes_horario': {},
-                'advertencia': 'El médico no tiene especialidades asignadas'
+                'advertencia': 'El médico no tiene especialidades asignadas',
+                'debug': {
+                    'medico_id': medico_id,
+                    'query': str(especialidades_medico.query)
+                }
             })
         
-        # Renombrar las claves para que sean más amigables
-        especialidades_list = [
-            {
-                'id': e['especialidad__id_Especialidad_Medica'],
-                'nombre': e['especialidad__Espacialidad_Medica'],
-                'activo': e['activo']
+        # Crear la lista de especialidades con el formato correcto
+        especialidades_list = []
+        for me in especialidades_medico:
+            especialidad_data = {
+                'id': me.especialidad.id_Especialidad_Medica,
+                'nombre': me.especialidad.Espacialidad_Medica,
+                'activo': me.activo
             }
-            for e in especialidades
-        ]
+            especialidades_list.append(especialidad_data)
+            print(f"[DEBUG] Agregando especialidad: {especialidad_data}")
         
-        # Obtener el horario del médico para cada especialidad
-        horarios_especialidades = []
-        for esp in especialidades_list:
-            try:
-                from django.urls import reverse
-                from django.test import RequestFactory
-                
-                # Crear una solicitud simulada
-                factory = RequestFactory()
-                url = reverse('citas:get_horarios_medico_especialidad', 
-                            args=[medico_id, esp['id']])
-                req = factory.get(url)
-                
-                # Llamar a la vista de horarios
-                from .views import get_horarios_medico_especialidad
-                response = get_horarios_medico_especialidad(req, medico_id, esp['id'])
-                
-                # Si la respuesta es exitosa, obtener el mensaje de horario
-                mensaje_horario = response.data.get('mensaje_horario', '') if hasattr(response, 'data') else ''
-                
-                # Agregar el mensaje de horario a la especialidad
-                esp['mensaje_horario'] = mensaje_horario
-                horarios_especialidades.append(esp)
-                
-            except Exception as e:
-                import traceback
-                traceback.print_exc()
-                continue  # Continuar con la siguiente especialidad si hay un error
+        print(f"[DEBUG] Total de especialidades encontradas: {len(especialidades_list)}")
         
-        # Retornar la lista de especialidades con sus horarios
-        return JsonResponse({
+        # Retornar las especialidades
+        response_data = {
+            'success': True,
             'especialidades': especialidades_list,
-            'mensajes_horario': {e['id']: e.get('mensaje_horario', '') for e in horarios_especialidades}
-        })
+            'total': len(especialidades_list),
+            'debug': {
+                'medico_id': medico_id,
+                'especialidades_count': len(especialidades_list)
+            }
+        }
+        
+        return JsonResponse(response_data)
         
     except Exception as e:
         import traceback
-        traceback.print_exc()
+        error_msg = str(e)
+        trace = traceback.format_exc()
+        print(f"[ERROR] Error en get_especialidades_medico: {error_msg}")
+        print(f"[TRACE] {trace}")
+        
         return JsonResponse({
+            'success': False,
             'error': 'Error al obtener las especialidades del médico',
-            'detalle': str(e)
+            'detalle': error_msg,
+            'trace': trace if request.user.is_staff else None
         }, status=500)
 class BancoListView(ListView):
     model = Banco
@@ -1350,8 +1357,48 @@ def get_estado_color(estado):
     return colores.get(estado, '#6c757d')  # Gris por defecto
 
 def agenda_medico(request):
-    # Renderiza la plantilla del calendario.
-    return render(request, 'citas/agenda/agenda_medico.html')
+    """
+    Vista para la agenda de médicos.
+    """
+    # Verificar si el usuario está autenticado
+    if not request.user.is_authenticated:
+        return redirect('admin:login')
+
+    # Obtener médicos activos con sus especialidades
+    medicos = UsuarioMedico.objects.filter(
+        activo=True
+    ).prefetch_related(
+        'medicoespecialidad_set__especialidad'
+    ).order_by('Apellidos_Medicos', 'Nombres_Medico')
+
+    # Preparar la lista de médicos con sus especialidades para el contexto
+    medicos_con_especialidad = []
+    for medico in medicos:
+        # Obtener todas las especialidades del médico
+        especialidades = []
+        for me in medico.medicoespecialidad_set.all():
+            especialidades.append({
+                'id': me.especialidad.id_Especialidad_Medica,
+                'nombre': me.especialidad.Espacialidad_Medica,
+                'activo': me.activo
+            })
+
+        # Agregar el médico a la lista con sus especialidades
+        if especialidades:  # Solo incluir médicos con al menos una especialidad
+            medicos_con_especialidad.append({
+                'id_Medico': medico.id_Medico,
+                'Nombres_Medico': medico.Nombres_Medico,
+                'Apellidos_Medicos': medico.Apellidos_Medicos,
+                'especialidades': especialidades
+            })
+
+    # Preparar el contexto para el template
+    context = {
+        'medicos': medicos_con_especialidad,
+        'title': 'Agenda de Médicos'
+    }
+
+    return render(request, 'citas/agenda/agenda_medico.html', context)
 
 def editar_cita(request, cita_id):
     """
@@ -2469,6 +2516,66 @@ def actualizar_estado_cita(request):
         }, status=500)
 
 # API para obtener médicos por especialidad
+# Función de debug para probar la API
+@csrf_exempt
+@require_http_methods(["GET"])
+def debug_get_especialidades(request, medico_id):
+    """
+    Función de debug para probar la carga de especialidades
+    """
+    print("\n=== DEBUG: debug_get_especialidades ===")
+    print(f"Médico ID recibido: {medico_id}")
+
+    try:
+        # Verificar que el médico existe
+        medico = UsuarioMedico.objects.get(id_Medico=medico_id)
+        print(f"Médico encontrado: {medico.Nombres_Medico} {medico.Apellidos_Medicos}")
+
+        # Mostrar todas las especialidades del médico
+        especialidades_medico = MedicoEspecialidad.objects.filter(medico=medico).select_related('especialidad')
+        print(f"Total de relaciones médico-especialidad: {especialidades_medico.count()}")
+
+        for me in especialidades_medico:
+            print(f"  - Especialidad: {me.especialidad.Espacialidad_Medica} (ID: {me.especialidad.id_Especialidad_Medica}), Activa: {me.activo}")
+
+        # Crear la respuesta
+        especialidades_list = []
+        for me in especialidades_medico:
+            especialidad_data = {
+                'id': me.especialidad.id_Especialidad_Medica,
+                'nombre': me.especialidad.Espacialidad_Medica,
+                'activo': me.activo
+            }
+            especialidades_list.append(especialidad_data)
+            print(f"Agregando especialidad: {especialidad_data}")
+
+        response_data = {
+            'success': True,
+            'especialidades': especialidades_list,
+            'total': len(especialidades_list),
+            'medico': f"{medico.Nombres_Medico} {medico.Apellidos_Medicos}"
+        }
+
+        print(f"Respuesta final: {response_data}")
+        return JsonResponse(response_data)
+
+    except UsuarioMedico.DoesNotExist:
+        print(f"ERROR: Médico con ID {medico_id} no existe")
+        return JsonResponse({
+            'success': False,
+            'error': f'Médico con ID {medico_id} no existe'
+        }, status=404)
+
+    except Exception as e:
+        print(f"ERROR inesperado: {str(e)}")
+        import traceback
+        traceback.print_exc()
+        return JsonResponse({
+            'success': False,
+            'error': str(e),
+            'traceback': traceback.format_exc()
+        }, status=500)
+
 @csrf_exempt
 @require_http_methods(["GET"])
 def medicos_por_especialidad(request):
@@ -2476,17 +2583,17 @@ def medicos_por_especialidad(request):
     API para obtener la lista de médicos por especialidad
     """
     especialidad_id = request.GET.get('especialidad_id')
-    
+
     if not especialidad_id:
         return JsonResponse({'error': 'Se requiere el parámetro especialidad_id'}, status=400)
-    
+
     try:
         # Obtener los médicos que tienen la especialidad seleccionada
         medicos = UsuarioMedico.objects.filter(
             especialidades__id_Especialidad_Medica=especialidad_id,
             activo=True
         ).distinct()
-        
+
         # Formatear la respuesta
         medicos_data = [{
             'id_Medico': medico.id_Medico,
@@ -2497,12 +2604,12 @@ def medicos_por_especialidad(request):
                 'nombre': esp.Espacialidad_Medica
             } for esp in medico.especialidades.all()]
         } for medico in medicos]
-        
+
         return JsonResponse({
             'success': True,
             'medicos': medicos_data
         })
-        
+
     except Exception as e:
         return JsonResponse({
             'success': False,

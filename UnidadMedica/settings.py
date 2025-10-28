@@ -117,10 +117,6 @@ TEMPLATES = [
 WSGI_APPLICATION = 'UnidadMedica.wsgi.application'
 
 
-# Configuración de zona horaria
-TIME_ZONE = 'America/Caracas'
-USE_TZ = True
-
 # Configuración de formato de fechas
 DATE_INPUT_FORMATS = [
     '%Y-%m-%d',  # '2006-10-25'
@@ -182,13 +178,16 @@ LOGOUT_REDIRECT_URL = 'web:inicio'
 # Internationalization
 # https://docs.djangoproject.com/en/5.2/topics/i18n/
 
-LANGUAGE_CODE = 'es'
-
+LANGUAGE_CODE = 'es-ve'
 TIME_ZONE = 'America/Caracas'
-
 USE_I18N = True
 USE_L10N = True
 USE_TZ = True
+
+# Configuración de formatos de fecha y hora
+FORMAT_MODULE_PATH = [
+    'UnidadMedica.formats',
+]
 
 
 # Static files (CSS, JavaScript, Images)

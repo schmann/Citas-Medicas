@@ -12,7 +12,7 @@ urlpatterns = [
     path('admin/', citas_admin.urls), 
 
     # 2. Citas
-    path('citas/', include('citas.urls')), 
+    path('citas/', include(('citas.urls', 'citas'), namespace='citas')),
 
     # 3. Web (Página de inicio)
     path('', include('web.urls')), 
