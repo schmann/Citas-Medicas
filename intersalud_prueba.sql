@@ -2670,3 +2670,13 @@ CREATE TABLE `usuarios_pacientes` (
 INSERT INTO `usuarios_pacientes` (`id_Paciente`, `Nombres_Paciente`, `Apellidos_Paciente`, `Prefijo_CIDNI_id`, `CIDNI`, `Fecha_Nacimiento_Paciente`, `Sexo_id`, `Status_id`, `Civil_id`, `Pais_id`) VALUES
 (1, 'Usuario test', 'Paciente', 1, '11999664', '2004-03-03', 2, 1, 1, 1);
 
+
+
+ALTER TABLE `ciudades`
+  ADD CONSTRAINT `ciudades_ibfk_1` FOREIGN KEY (`id_estado`) REFERENCES `estados` (`id_estado`) ON DELETE CASCADE ON UPDATE CASCADE;
+
+ALTER TABLE `municipios`
+  ADD CONSTRAINT `municipios_ibfk_1` FOREIGN KEY (`id_estado`) REFERENCES `estados` (`id_estado`) ON DELETE CASCADE ON UPDATE CASCADE;
+
+ALTER TABLE `parroquias`
+  ADD CONSTRAINT `parroquias_ibfk_1` FOREIGN KEY (`id_municipio`) REFERENCES `municipios` (`id_municipio`) ON DELETE CASCADE ON UPDATE CASCADE;
