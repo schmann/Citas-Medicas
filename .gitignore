@@ -164,3 +164,4 @@ ENV/
 .env.test.local
 .env.production.local
 credentials.json
+credentials.json
